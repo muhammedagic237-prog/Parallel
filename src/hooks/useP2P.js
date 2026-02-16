@@ -227,7 +227,7 @@ export const useP2P = (roomId, username) => {
             });
 
             peerInstance.current = peer;
-            peerRef.current = []; // Reset peers ref
+            peersRef.current = []; // Reset peers ref
 
             peer.on('open', async (id) => {
                 console.log('My Peer ID:', id);
