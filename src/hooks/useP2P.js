@@ -216,8 +216,18 @@ export const useP2P = (roomId, username) => {
             const id = `parallel_${roomId}_${username}_${Math.floor(Math.random() * 100000)}`;
             setMyPeerId(id);
 
-            const peer = new Peer(id, { debug: 1 });
+            const peer = new Peer(id, {
+                debug: 1,
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:global.stun.twilio.com:3478' }
+                    ]
+                }
+            });
+
             peerInstance.current = peer;
+            peerRef.current = []; // Reset peers ref
 
             peer.on('open', async (id) => {
                 console.log('My Peer ID:', id);
@@ -237,138 +247,91 @@ export const useP2P = (roomId, username) => {
 
                     others.forEach(async (p) => {
                         if (!connections.current[p.id]) {
-                            // Only connect if we have a larger ID to prevent double connection
-                            // OR just let logic handle it (simple approach: everyone connects to everyone they see)
-                            // Initialize Peer
-                            // Using dynamic import for PeerJS as it's not directly used in the global scope
-                            import('peerjs').then(({ Peer }) => {
-                                const peer = new Peer(id, {
-                                    debug: 1, // Changed from 2 to 1 to match original
-                                    config: {
-                                        iceServers: [
-                                            { urls: 'stun:stun.l.google.com:19302' },
-                                            { urls: 'stun:global.stun.twilio.com:3478' }
-                                        ]
-                                    }
-                                });
-
-                                peerRef.current = peer; // Changed from peerInstance to peerRef
-
-                                peer.on('open', async (id) => {
-                                    console.log('My Peer ID:', id);
-                                    setStatus('connected');
-
-                                    // 3. Join Room
-                                    await joinRoom(roomId, id, {
-                                        user: username,
-                                        key: JSON.stringify(exportedPublicKey)
-                                    });
-
-                                    // 4. Subscribe
-                                    unsubscribeFirestore = subscribeToRoom(roomId, (roomPeers) => {
-                                        const others = roomPeers.filter(p => p.id !== id);
-                                        setPeers(others);
-                                        peersRef.current = others; // Update sync ref
-
-                                        others.forEach(async (p) => {
-                                            if (!connections.current[p.id]) {
-                                                // Only connect if we have a larger ID to prevent double connection
-                                                // OR just let logic handle it (simple approach: everyone connects to everyone they see)
-                                                // Better: compare IDs to decide who calls.
-                                                // Current logic: "If not connected".
-                                                // But incoming might have established it.
-                                                // PeerJS handles check often, but let's be safe.
-                                                // For this MVP, we'll stick to basic: if we see them and no connection object exists, connect.
-                                                connectToPeer(p);
-                                            } else {
-                                                // If we have a connection entry but no secret (e.g. came from incoming), try to derive now
-                                                const entry = connections.current[p.id];
-                                                if (entry && !entry.sharedSecret) {
-                                                    const key = await importKey(JSON.parse(p.key));
-                                                    entry.sharedSecret = await deriveSharedSecret(myKeyPair.current.privateKey, key);
-                                                }
-                                            }
-                                        });
-                                    });
-                                });
-
-                                peer.on('connection', (conn) => handleIncomingConnection(conn));
-
-                                // VIDEO CALL LISTENER
-                                peer.on('call', (call) => {
-                                    console.log("Incoming Call from:", call.peer);
-                                    setIncomingCall({ call });
-                                });
-
-                                // HANDLE INCOMING CALLS
-                                peer.on('call', (call) => {
-                                    console.log("Incoming call from:", call.peer);
-                                    // Find caller name from peers list if possible, else use ID
-                                    setIncomingCall({ call });
-                                });
-
-                                peer.on('error', (err) => {
-                                    console.error('Peer Error:', err);
-                                    setStatus('error');
-                                });
-                            });
-                        };
-
-                        init();
-
-                        return () => {
-                            if (peerRef.current) peerRef.current.destroy(); // Changed from peerInstance to peerRef
-                            unsubscribeFirestore();
-                            connections.current = {};
-                        };
-                        // eslint-disable-next-line react-hooks/exhaustive-deps
-                    }, [roomId, username]);
-
-                    // Send Message (Direct or Broadcast)
-                    const sendMessage = async (text, targetPeerId) => {
-                        const payload = {
-                            id: Date.now() + Math.random(),
-                            user: username,
-                            text,
-                            timestamp: Date.now()
-                        };
-
-                        // If target provided, direct message
-                        if (targetPeerId) {
-                            const entry = connections.current[targetPeerId];
-                            if (entry && entry.conn.open && entry.sharedSecret) {
-                                const encrypted = await encryptMessage(JSON.stringify(payload), entry.sharedSecret);
-                                entry.conn.send({ payload: encrypted });
-
-                                // Local Echo
-                                addMessage({ ...payload, isMe: true, peerId: targetPeerId });
-                            } else {
-                                console.error("Cannot send to", targetPeerId, "- Connection not ready");
-                            }
+                            connectToPeer(p);
                         } else {
-                            // Broadcast (legacy support)
-                            Object.values(connections.current).forEach(async (entry) => {
-                                if (entry.conn.open && entry.sharedSecret) {
-                                    const encrypted = await encryptMessage(JSON.stringify(payload), entry.sharedSecret);
-                                    entry.conn.send({ payload: encrypted });
-                                }
-                            });
-                            addMessage({ ...payload, isMe: true, peerId: 'broadcast' });
+                            // If we have a connection entry but no secret (e.g. came from incoming), try to derive now
+                            const entry = connections.current[p.id];
+                            if (entry && !entry.sharedSecret) {
+                                const key = await importKey(JSON.parse(p.key));
+                                entry.sharedSecret = await deriveSharedSecret(myKeyPair.current.privateKey, key);
+                            }
                         }
-                    };
+                    });
+                });
+            });
 
-                    return {
-                        status,
-                        peers,
-                        messages,
-                        sendMessage,
-                        myPeerId,
-                        // Call Exports
-                        callPeer,
-                        incomingCall,
-                        answerCall,
-                        endCall,
-                        activeCall,
-                        remoteStream
-                    };
-                };
+            peer.on('connection', (conn) => handleIncomingConnection(conn));
+
+            // VIDEO CALL LISTENER
+            peer.on('call', (call) => {
+                console.log("Incoming Call from:", call.peer);
+                setIncomingCall({ call });
+            });
+
+            peer.on('error', (err) => {
+                console.error('Peer Error:', err);
+                setStatus('error');
+            });
+        };
+
+        // Initialize Peer (Client Side Only)
+        if (typeof window !== 'undefined') {
+            init();
+        }
+
+        return () => {
+            if (peerInstance.current) peerInstance.current.destroy();
+            unsubscribeFirestore();
+            connections.current = {};
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [roomId, username]);
+
+    // Send Message (Direct or Broadcast)
+    const sendMessage = async (text, targetPeerId) => {
+        const payload = {
+            id: Date.now() + Math.random(),
+            user: username,
+            text,
+            timestamp: Date.now()
+        };
+
+        // If target provided, direct message
+        if (targetPeerId) {
+            const entry = connections.current[targetPeerId];
+            if (entry && entry.conn.open && entry.sharedSecret) {
+                const encrypted = await encryptMessage(JSON.stringify(payload), entry.sharedSecret);
+                entry.conn.send({ payload: encrypted });
+
+                // Local Echo
+                addMessage({ ...payload, isMe: true, peerId: targetPeerId });
+            } else {
+                console.error("Cannot send to", targetPeerId, "- Connection not ready");
+            }
+        } else {
+            // Broadcast (legacy support)
+            Object.values(connections.current).forEach(async (entry) => {
+                if (entry.conn.open && entry.sharedSecret) {
+                    const encrypted = await encryptMessage(JSON.stringify(payload), entry.sharedSecret);
+                    entry.conn.send({ payload: encrypted });
+                }
+            });
+            addMessage({ ...payload, isMe: true, peerId: 'broadcast' });
+        }
+    };
+
+    return {
+        status,
+        peers,
+        messages,
+        sendMessage,
+        myPeerId,
+        // Call Exports
+        callPeer,
+        incomingCall,
+        answerCall,
+        endCall,
+        activeCall,
+        remoteStream
+    };
+};
