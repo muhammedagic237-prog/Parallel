@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+  <title>temp-app</title>
+  <script>
+    window.global = window;
+    window.process = { env: {} };
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <div id="error-trap"
+    style="position: fixed; top: 0; left: 0; width: 100%; background: rgba(0,0,0,0.8); color: red; z-index: 9999; padding: 20px; display: none; white-space: pre-wrap;">
+  </div>
+  <script>
+    // POLYFILLS
+    window.global = window;
+    window.process = { env: {} };
+    window.Buffer = window.Buffer || {};
+
+    // ERROR TRAP
+    function showErr(msg) {
+      const trap = document.getElementById('error-trap');
+      if (trap) {
+        trap.style.display = 'block';
+        trap.innerText += msg + '\n\n';
+      }
+    }
+
+    window.onerror = function (msg, url, lineNo, columnNo, error) {
+      showErr(`CRASH: ${msg}\nLine: ${lineNo}`);
+      return false;
+    };
+
+    window.addEventListener('unhandledrejection', function (event) {
+      showErr(`PROMISE REJECTION: ${event.reason}`);
+    });
+
+    // Capture Console Error
+    const originalError = console.error;
+    console.error = function (...args) {
+      showErr(`CONSOLE ERROR: ${args.join(' ')}`);
+      originalError.apply(console, args);
+    };
+  </script>
+  <script type="module" src="/src/index.jsx"></script>
+</body>
+
+</html>

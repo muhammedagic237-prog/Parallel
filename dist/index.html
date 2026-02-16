@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>temp-app</title>
+  <script type="module" crossorigin src="/assets/index-C-ECpkwX.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-BZW-JksJ.css">
+</head>
+
+<body>
+  <div id="root"></div>
+  <div id="error-trap"
+    style="position: fixed; top: 0; left: 0; width: 100%; background: rgba(0,0,0,0.8); color: red; z-index: 9999; padding: 20px; display: none; white-space: pre-wrap;">
+  </div>
+  <script>
+    window.onerror = function (msg, url, lineNo, columnNo, error) {
+      const trap = document.getElementById('error-trap');
+      trap.style.display = 'block';
+      trap.innerText += `ERROR: ${msg}\nLine: ${lineNo}\n\n`;
+      return false;
+    };
+    window.addEventListener('unhandledrejection', function (event) {
+      const trap = document.getElementById('error-trap');
+      trap.style.display = 'block';
+      trap.innerText += `PROMISE ERROR: ${event.reason}\n\n`;
+    });
+  </script>
+</body>
+
+</html>
