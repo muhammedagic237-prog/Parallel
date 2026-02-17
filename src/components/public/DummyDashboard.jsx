@@ -44,6 +44,11 @@ const DummyDashboard = ({ onLock }) => {
     }, []);
 
     const totalBalance = assets.reduce((sum, asset) => sum + (asset.price * asset.balance), 0);
+    const weightedChange = assets.reduce((sum, asset) => {
+        const value = asset.price * asset.balance;
+        return sum + (value * (asset.change / 100));
+    }, 0);
+    const percentChange = totalBalance > 0 ? (weightedChange / (totalBalance - weightedChange)) * 100 : 0;
 
     // Simple SVG Line Chart Generator
     const generateChartPath = (history, width, height) => {
@@ -81,9 +86,9 @@ const DummyDashboard = ({ onLock }) => {
                     <h1 className="text-4xl font-bold tracking-tight">
                         ${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </h1>
-                    <div className="flex items-center gap-1 mt-2 px-3 py-1 bg-green-500/10 text-green-400 rounded-full text-xs font-bold">
-                        <ArrowUpRight size={14} />
-                        <span>+$1,240.50 (2.4%)</span>
+                    <div className={`flex items-center gap-1 mt-2 px-3 py-1 rounded-full text-xs font-bold ${weightedChange >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                        {weightedChange >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                        <span>{weightedChange >= 0 ? '+' : ''}${Math.abs(weightedChange).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({percentChange >= 0 ? '+' : ''}{percentChange.toFixed(1)}%)</span>
                     </div>
                 </div>
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, Unlock, Fingerprint } from 'lucide-react';
 
-const AuthGate = ({ onAuthenticated, onCancel }) => {
+const AuthGate = ({ onAuthenticated }) => {
     const [pin, setPin] = useState("");
     const [error, setError] = useState(false);
 
@@ -64,9 +64,7 @@ const AuthGate = ({ onAuthenticated, onCancel }) => {
                         {num}
                     </button>
                 ))}
-                <button className="w-16 h-16 flex items-center justify-center text-sm font-medium text-gray-400" onClick={onCancel}>
-                    Cancel
-                </button>
+                <div className="w-16 h-16" /> {/* Spacer */}
                 <button
                     onClick={() => handleInput(0)}
                     className="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 flex items-center justify-center text-2xl font-light transition-colors"

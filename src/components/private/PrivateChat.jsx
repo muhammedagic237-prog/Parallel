@@ -34,6 +34,10 @@ const PrivateChat = ({ onLock }) => {
             <div className="bg-white text-black h-[100dvh] flex flex-col items-center justify-center p-8 font-sans overflow-hidden">
                 {/* LOGO: Rounded Square with Full-Height Parallel Lines V5 */}
                 <div className="mb-12 relative flex flex-col items-center">
+                    {/* Back / Lock Button */}
+                    <button onClick={onLock} className="absolute -top-8 left-0 text-gray-400 hover:text-black transition-colors">
+                        <ArrowLeft size={24} />
+                    </button>
                     <svg width="120" height="120" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <defs>
                             <clipPath id="roundedBox">
@@ -405,8 +409,15 @@ const VideoCallOverlay = ({ call, remoteStream, onEnd }) => {
 
     const toggleMute = () => {
         if (call.stream) {
-            call.stream.getAudioTracks().forEach(track => track.enabled = !muted);
+            call.stream.getAudioTracks().forEach(track => track.enabled = muted);
             setMuted(!muted);
+        }
+    };
+
+    const toggleCamera = () => {
+        if (call.stream) {
+            call.stream.getVideoTracks().forEach(track => track.enabled = cameraOff);
+            setCameraOff(!cameraOff);
         }
     };
 
@@ -434,7 +445,7 @@ const VideoCallOverlay = ({ call, remoteStream, onEnd }) => {
                 <button onClick={onEnd} className="p-4 rounded-full bg-red-600 text-white shadow-lg scale-110">
                     <PhoneOff size={32} />
                 </button>
-                <button onClick={() => setCameraOff(!cameraOff)} className={`p-4 rounded-full ${cameraOff ? 'bg-white text-black' : 'bg-gray-800 text-white'}`}>
+                <button onClick={toggleCamera} className={`p-4 rounded-full ${cameraOff ? 'bg-white text-black' : 'bg-gray-800 text-white'}`}>
                     {cameraOff ? <VideoOff /> : <Video />}
                 </button>
             </div>
