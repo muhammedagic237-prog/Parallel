@@ -14,13 +14,19 @@ const AuthGate = ({ onAuthenticated }) => {
         if (pin.length < 4) {
             const newPin = pin + num;
             setPin(newPin);
+            // Haptic feedback per keypress
+            if (navigator.vibrate) navigator.vibrate(15);
 
             if (newPin.length === 4) {
                 if (newPin === SECRET_PIN) {
-                    onAuthenticated('private'); // SUCCESS - REAL CHAT
+                    if (navigator.vibrate) navigator.vibrate(30);
+                    onAuthenticated('private');
                 } else if (newPin === DUMMY_PIN) {
-                    onAuthenticated('dummy'); // SUCCESS - DUMMY NOTES
+                    if (navigator.vibrate) navigator.vibrate(30);
+                    onAuthenticated('dummy');
                 } else {
+                    // Error haptic — strong double buzz
+                    if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
                     setError(true);
                     setTimeout(() => {
                         setPin("");

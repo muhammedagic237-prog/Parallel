@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, Camera, Image as ImageIcon, Mic, Phone, Video, Heart, Info, Send, Plus, PhoneOff, MicOff, VideoOff, RefreshCw, Clock } from 'lucide-react';
+import { ArrowLeft, Camera, Image as ImageIcon, Mic, Phone, Video, Heart, Info, Send, Plus, PhoneOff, MicOff, VideoOff, RefreshCw, Clock, Trash2, Check, CheckCheck, Zap } from 'lucide-react';
 import { useP2P } from '../../hooks/useP2P';
 
 const PrivateChat = ({ onLock }) => {
@@ -105,6 +105,8 @@ const PrivateChat = ({ onLock }) => {
                         onSendMessage={(text) => p2p.sendMessage(text, activeChat.id)}
                         onVideoCall={(stream) => p2p.callPeer(activeChat.id, stream)}
                         onBack={() => setActiveChat(null)}
+                        isTyping={!!p2p.typingPeers[activeChat.id]}
+                        onTyping={() => p2p.sendTyping(activeChat.id)}
                     />
                 ) : (
                     <ChatListView
@@ -116,6 +118,7 @@ const PrivateChat = ({ onLock }) => {
                         currentUser={username}
                         retentionEnabled={p2p.retentionEnabled}
                         onToggleRetention={p2p.toggleRetention}
+                        onPanicWipe={() => { p2p.panicWipe(); onLock(); }}
                     />
                 )}
             </AnimatePresence>
@@ -146,7 +149,7 @@ const PrivateChat = ({ onLock }) => {
 };
 
 // --- INSTAGRAM DIRECT LIST ---
-const ChatListView = ({ onLock, onSelectChat, peers, status, currentUser, retentionEnabled, onToggleRetention }) => (
+const ChatListView = ({ onLock, onSelectChat, peers, status, currentUser, retentionEnabled, onToggleRetention, onPanicWipe }) => (
     <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -164,7 +167,16 @@ const ChatListView = ({ onLock, onSelectChat, peers, status, currentUser, retent
                     <span className="text-[10px] mt-1 text-gray-400">▼</span>
                 </div>
             </div>
-            <div className="flex gap-6 text-white">
+            <div className="flex gap-5 text-white items-center">
+                {/* Panic Wipe Button */}
+                <button
+                    onClick={onPanicWipe}
+                    className="relative text-red-500 hover:text-red-400 active:scale-90 transition-all"
+                    title="Panic Wipe"
+                >
+                    <Zap size={22} strokeWidth={2} />
+                </button>
+
                 <button
                     onClick={() => onToggleRetention(!retentionEnabled)}
                     className={`relative transition-colors ${retentionEnabled ? 'text-blue-500' : 'text-gray-500'}`}
@@ -175,16 +187,21 @@ const ChatListView = ({ onLock, onSelectChat, peers, status, currentUser, retent
 
                 <div className="relative">
                     <Video size={28} strokeWidth={1.5} />
-                    {status === 'connected' && <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-black"></div>}
+                    {status === 'connected' && (
+                        <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-black animate-pulse"></div>
+                    )}
+                    {status === 'connecting' && (
+                        <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-yellow-500 rounded-full border-2 border-black animate-ping"></div>
+                    )}
                 </div>
                 <div className="relative">
                     <Send size={26} strokeWidth={1.5} className="-rotate-12 translate-y-0.5" />
-                    <div className="absolute -top-1 -right-1 bg-red-500 text-[10px] font-bold px-1 rounded-full min-w-[16px] text-center">1</div>
+                    {peers.length > 0 && <div className="absolute -top-1 -right-1 bg-red-500 text-[10px] font-bold px-1 rounded-full min-w-[16px] text-center">{peers.length}</div>}
                 </div>
             </div>
         </header>
 
-        {/* Message Requests / Tabs */}
+        {/* Search */}
         <div className="px-4 mt-2 mb-4">
             <div className="relative">
                 <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
@@ -229,7 +246,8 @@ const ChatListView = ({ onLock, onSelectChat, peers, status, currentUser, retent
 
             {peers.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-40 text-gray-500">
-                    <p>No active peers found.</p>
+                    <div className={`w-4 h-4 rounded-full mb-3 ${status === 'connecting' ? 'bg-yellow-500 animate-ping' : status === 'connected' ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`}></div>
+                    <p>{status === 'connecting' ? 'Connecting to room...' : status === 'connected' ? 'Waiting for peers...' : 'Disconnected'}</p>
                 </div>
             )}
 
@@ -239,8 +257,9 @@ const ChatListView = ({ onLock, onSelectChat, peers, status, currentUser, retent
                     onClick={() => onSelectChat({ id: peer.id, name: peer.user })}
                     className="w-full px-4 py-3 flex items-center gap-3 active:bg-[#121212] transition-colors"
                 >
-                    <div className="w-14 h-14 rounded-full bg-gray-700 flex items-center justify-center font-bold text-lg text-white">
+                    <div className="w-14 h-14 rounded-full bg-gray-700 flex items-center justify-center font-bold text-lg text-white relative">
                         {peer.user[0].toUpperCase()}
+                        <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-black"></div>
                     </div>
                     <div className="flex-1 text-left">
                         <h3 className="text-sm font-normal text-white">{peer.user}</h3>
@@ -259,15 +278,18 @@ const ChatListView = ({ onLock, onSelectChat, peers, status, currentUser, retent
 );
 
 // --- INSTAGRAM CONVERSATION ---
-const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall }) => {
+const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall, isTyping, onTyping }) => {
     const [input, setInput] = useState("");
+    const [reactionMsg, setReactionMsg] = useState(null);
     const endRef = useRef(null);
+    const typingTimeout = useRef(null);
 
-    // Pass video call action
+    const REACTIONS = ['❤️', '🔥', '😂', '👍', '😮', '😢'];
+
     const handleVideoCall = () => {
         navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
             onVideoCall(stream);
-        }).catch(err => alert("Camera access required for video calls."));
+        }).catch(() => alert("Camera access required for video calls."));
     };
 
     const handleSend = (e) => {
@@ -275,11 +297,24 @@ const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall }
         if (!input.trim()) return;
         onSendMessage(input);
         setInput("");
+        // Haptic feedback
+        if (navigator.vibrate) navigator.vibrate(10);
+    };
+
+    const handleInputChange = (e) => {
+        setInput(e.target.value);
+        // Throttled typing signal
+        if (!typingTimeout.current) {
+            onTyping();
+            typingTimeout.current = setTimeout(() => {
+                typingTimeout.current = null;
+            }, 2000);
+        }
     };
 
     useEffect(() => {
         endRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages]);
+    }, [messages, isTyping]);
 
     return (
         <motion.div
@@ -303,7 +338,18 @@ const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall }
                         </div>
                         <div className="flex flex-col">
                             <h3 className="text-sm font-bold leading-tight text-white">{chat.name}</h3>
-                            <span className="text-[11px] text-gray-400">Safe P2P • Active now</span>
+                            <span className="text-[11px] text-gray-400">
+                                {isTyping ? (
+                                    <span className="text-green-400 flex items-center gap-1">
+                                        typing
+                                        <span className="flex gap-0.5">
+                                            <span className="w-1 h-1 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                                            <span className="w-1 h-1 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                                            <span className="w-1 h-1 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                                        </span>
+                                    </span>
+                                ) : 'E2E Encrypted • Active now'}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -315,31 +361,81 @@ const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall }
             </header>
 
             {/* Chat Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-1">
+            <div className="flex-1 overflow-y-auto p-4 space-y-1" onClick={() => setReactionMsg(null)}>
                 {messages.map((msg, idx) => {
                     const isMe = msg.isMe;
                     const isLast = idx === messages.length - 1;
                     const showAvatar = !isMe && (isLast || messages[idx + 1]?.isMe);
 
                     return (
-                        <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-1`}>
+                        <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-1 relative group`}>
                             {!isMe && (
                                 <div className="w-7 h-7 rounded-full bg-gray-700 mr-2 flex-shrink-0 self-end overflow-hidden">
                                     {showAvatar && <div className="w-full h-full flex items-center justify-center text-[10px]">{msg.user[0]}</div>}
                                 </div>
                             )}
 
-                            <div className={`
-                                max-w-[70%] px-4 py-3 text-[15px] leading-snug break-words
-                                ${isMe
-                                    ? 'bg-[#3797F0] text-white rounded-[22px] rounded-br-md'
-                                    : 'bg-[#262626] text-white rounded-[22px] rounded-bl-md'}
-                            `}>
-                                {msg.text}
+                            <div className="relative">
+                                {/* Reaction popup */}
+                                <AnimatePresence>
+                                    {reactionMsg === msg.id && (
+                                        <motion.div
+                                            initial={{ opacity: 0, scale: 0.5, y: 10 }}
+                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                            exit={{ opacity: 0, scale: 0.5 }}
+                                            className="absolute -top-10 left-0 right-0 flex justify-center z-30"
+                                        >
+                                            <div className="bg-[#333] rounded-full px-2 py-1 flex gap-1 shadow-xl">
+                                                {REACTIONS.map(r => (
+                                                    <button key={r} className="text-lg hover:scale-125 transition-transform px-0.5" onClick={(e) => { e.stopPropagation(); setReactionMsg(null); }}>
+                                                        {r}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+
+                                <div
+                                    onDoubleClick={() => setReactionMsg(msg.id)}
+                                    className={`
+                                        max-w-[70%] px-4 py-3 text-[15px] leading-snug break-words cursor-pointer select-none
+                                        ${isMe
+                                            ? 'bg-[#3797F0] text-white rounded-[22px] rounded-br-md'
+                                            : 'bg-[#262626] text-white rounded-[22px] rounded-bl-md'}
+                                    `}
+                                >
+                                    {msg.text}
+                                </div>
+
+                                {/* Delivery Status Ticks */}
+                                {isMe && (
+                                    <div className="flex justify-end mt-0.5 pr-1">
+                                        {msg.status === 'delivered' ? (
+                                            <CheckCheck size={14} className="text-blue-400" />
+                                        ) : (
+                                            <Check size={14} className="text-gray-500" />
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     );
                 })}
+
+                {/* Typing Indicator Bubble */}
+                {isTyping && (
+                    <div className="flex justify-start mb-1">
+                        <div className="w-7 h-7 rounded-full bg-gray-700 mr-2 flex-shrink-0 self-end"></div>
+                        <div className="bg-[#262626] rounded-[22px] rounded-bl-md px-4 py-3">
+                            <div className="flex gap-1">
+                                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 <div ref={endRef} />
             </div>
 
@@ -352,7 +448,7 @@ const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall }
                 <div className="flex-1 bg-[#262626] rounded-full h-11 flex items-center px-4 gap-2 border border-transparent focus-within:border-gray-700 transition-colors">
                     <input
                         value={input}
-                        onChange={e => setInput(e.target.value)}
+                        onChange={handleInputChange}
                         type="text"
                         placeholder="Message..."
                         className="bg-transparent border-none outline-none text-white text-[15px] w-full placeholder-gray-400"

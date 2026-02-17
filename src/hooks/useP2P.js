@@ -65,9 +65,10 @@ async function decryptMessage(packedJson, key) {
 export const useP2P = (roomId, username) => {
     const [status, setStatus] = useState('disconnected');
     const [peers, setPeers] = useState([]);
-    const [messages, setMessages] = useState([]); // { id, text, user, peerId, isMe, timestamp }
+    const [messages, setMessages] = useState([]); // { id, text, user, peerId, isMe, timestamp, status }
     const [myPeerId, setMyPeerId] = useState(null);
-    const [retentionEnabled, setRetentionEnabledState] = useState(false); // Default to FALSE (RAM Only)
+    const [retentionEnabled, setRetentionEnabledState] = useState(false);
+    const [typingPeers, setTypingPeers] = useState({}); // { peerId: timestamp }
 
     // Toggle Retention (RAM Only Mode)
     const toggleRetention = (enabled) => {
@@ -90,10 +91,7 @@ export const useP2P = (roomId, username) => {
 
             setMessages(prev => {
                 const valid = prev.filter(msg => (now - msg.timestamp) < TWENTY_FOUR_HOURS);
-                if (valid.length !== prev.length) {
-                    console.log("Pruned old RAM messages");
-                    return valid;
-                }
+                if (valid.length !== prev.length) return valid;
                 return prev;
             });
         }, 60 * 1000); // Check every minute
@@ -111,11 +109,10 @@ export const useP2P = (roomId, username) => {
     // --- CALL ACTIONS ---
     const callPeer = (remoteId, localStream) => {
         if (!peerInstance.current) return;
-        console.log("Calling peer:", remoteId);
+
         const call = peerInstance.current.call(remoteId, localStream);
 
         call.on('stream', (stream) => {
-            console.log("Remote stream received (Outgoing)");
             setRemoteStream(stream);
         });
         call.on('close', () => endCall());
@@ -128,11 +125,9 @@ export const useP2P = (roomId, username) => {
         if (!incomingCall) return;
         const { call } = incomingCall;
 
-        console.log("Answering call...");
         call.answer(localStream);
 
         call.on('stream', (stream) => {
-            console.log("Remote stream received (Incoming)");
             setRemoteStream(stream);
         });
         call.on('close', () => endCall());
@@ -174,12 +169,22 @@ export const useP2P = (roomId, username) => {
         }
 
         conn.on('data', async (data) => {
+            // Typing indicator (unencrypted control signal)
+            if (data.type === 'typing') {
+                setTypingPeers(prev => ({ ...prev, [peerId]: Date.now() }));
+                return;
+            }
+            // Delivery confirmation
+            if (data.type === 'delivered') {
+                setMessages(prev => prev.map(m => m.id === data.msgId ? { ...m, status: 'delivered' } : m));
+                return;
+            }
+
             if (data.payload) {
                 const entry = connections.current[peerId];
 
                 // If missing secret (incoming), try to lazy load
                 if (!entry.sharedSecret) {
-                    // Try to find key in refs if we missed it earlier
                     const peerData = peersRef.current.find(p => p.id === peerId);
                     if (peerData) {
                         try {
@@ -190,15 +195,17 @@ export const useP2P = (roomId, username) => {
                 }
 
                 if (!entry.sharedSecret) {
-                    console.warn("Received data but no secret yet for", peerId);
                     return;
                 }
 
                 const json = await decryptMessage(data.payload, entry.sharedSecret);
                 if (json) {
                     const msg = JSON.parse(json);
-                    // Add to messages with peerId = sender
-                    addMessage({ ...msg, peerId, isMe: false });
+                    addMessage({ ...msg, peerId, isMe: false, status: 'delivered' });
+                    // Send delivery confirmation back
+                    if (entry.conn.open) {
+                        entry.conn.send({ type: 'delivered', msgId: msg.id });
+                    }
                 }
             }
         });
@@ -265,7 +272,7 @@ export const useP2P = (roomId, username) => {
             peersRef.current = []; // Reset peers ref
 
             peer.on('open', async (id) => {
-                console.log('My Peer ID:', id);
+
                 setStatus('connected');
 
                 // 3. Join Room
@@ -299,7 +306,7 @@ export const useP2P = (roomId, username) => {
 
             // VIDEO CALL LISTENER
             peer.on('call', (call) => {
-                console.log("Incoming Call from:", call.peer);
+
                 setIncomingCall({ call });
             });
 
@@ -339,7 +346,7 @@ export const useP2P = (roomId, username) => {
                 entry.conn.send({ payload: encrypted });
 
                 // Local Echo
-                addMessage({ ...payload, isMe: true, peerId: targetPeerId });
+                addMessage({ ...payload, isMe: true, peerId: targetPeerId, status: 'sent' });
             } else {
                 console.error("Cannot send to", targetPeerId, "- Connection not ready");
             }
@@ -351,9 +358,39 @@ export const useP2P = (roomId, username) => {
                     entry.conn.send({ payload: encrypted });
                 }
             });
-            addMessage({ ...payload, isMe: true, peerId: 'broadcast' });
+            addMessage({ ...payload, isMe: true, peerId: 'broadcast', status: 'sent' });
         }
     };
+
+    // Send typing signal
+    const sendTyping = (targetPeerId) => {
+        const entry = connections.current[targetPeerId];
+        if (entry && entry.conn.open) {
+            entry.conn.send({ type: 'typing' });
+        }
+    };
+
+    // Panic Wipe: Instantly purge all messages from RAM and reset state
+    const panicWipe = () => {
+        setMessages([]);
+        // Vibrate for feedback if supported
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+    };
+
+    // Clear typing indicators older than 3s
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const now = Date.now();
+            setTypingPeers(prev => {
+                const next = {};
+                for (const [id, ts] of Object.entries(prev)) {
+                    if (now - ts < 3000) next[id] = ts;
+                }
+                return Object.keys(next).length !== Object.keys(prev).length ? next : prev;
+            });
+        }, 1000);
+        return () => clearInterval(interval);
+    }, []);
 
     return {
         status,
@@ -370,6 +407,10 @@ export const useP2P = (roomId, username) => {
         remoteStream,
         // Retention
         retentionEnabled,
-        toggleRetention
+        toggleRetention,
+        // WOW Features
+        typingPeers,
+        sendTyping,
+        panicWipe
     };
 };
