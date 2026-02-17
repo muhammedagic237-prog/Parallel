@@ -30,8 +30,8 @@ const DummyDashboard = ({ onLock }) => {
                     return asset;
                 }));
             }
-        } catch (err) {
-            console.error("Failed to fetch prices", err);
+        } catch {
+            // Price fetch failed silently
         } finally {
             setTimeout(() => setLoading(false), 800);
         }

@@ -258,7 +258,7 @@ export const useP2P = (roomId, username) => {
             setMyPeerId(id);
 
             const peer = new Peer(id, {
-                debug: 1,
+                debug: 0,
                 config: {
                     iceServers: [
                         { urls: 'stun:stun.l.google.com:19302' },
@@ -309,7 +309,7 @@ export const useP2P = (roomId, username) => {
                 setIncomingCall({ call });
             });
 
-            peer.on('error', () => { // Removed console.error
+            peer.on('error', () => {
                 setStatus('error');
             });
         };
@@ -349,7 +349,7 @@ export const useP2P = (roomId, username) => {
                 // No connection ready, message will fail silently
             }
         } else {
-            // Broadcast (legacy support)
+            // Broadcast to all peers
             Object.values(connections.current).forEach(async (entry) => {
                 if (entry.conn.open && entry.sharedSecret) {
                     const encrypted = await encryptMessage(JSON.stringify(payload), entry.sharedSecret);

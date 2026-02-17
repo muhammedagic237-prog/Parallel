@@ -1,11 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, doc, setDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
 
-// TODO: Replace with your actual config from Firebase Console
-// 1. Go to console.firebase.google.com
-// 2. Create project "Parallel-App"
-// 3. Register Web App
-// 4. Copy the config object below
+
 const firebaseConfig = {
     apiKey: "AIzaSyBQDdzlJemo4Cbw3SKcTDX_YjQ27eCp5ug",
     authDomain: "ghost-chatamd.firebaseapp.com",
