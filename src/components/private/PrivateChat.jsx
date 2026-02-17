@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, Camera, Image as ImageIcon, Mic, Phone, Video, Heart, Info, Send, Plus, PhoneOff, MicOff, VideoOff, RefreshCw, Clock, Trash2, Check, CheckCheck, Zap } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
+import { ArrowLeft, Camera, Image as ImageIcon, Mic, Phone, Video, Heart, Info, Send, Plus, PhoneOff, MicOff, VideoOff, Clock, Check, CheckCheck, Zap } from 'lucide-react';
 import { useP2P } from '../../hooks/useP2P';
 
 const PrivateChat = ({ onLock }) => {
@@ -130,7 +130,7 @@ const PrivateChat = ({ onLock }) => {
                     onAnswer={() => {
                         navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
                             p2p.answerCall(stream);
-                        });
+                        }).catch(() => { /* User denied camera */ });
                     }}
                     onReject={() => p2p.endCall()}
                 />
@@ -469,7 +469,7 @@ const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall, 
 };
 
 // --- VIDEO CALL COMPONENTS ---
-const IncomingCallModal = ({ call, onAnswer, onReject }) => (
+const IncomingCallModal = ({ onAnswer, onReject }) => (
     <motion.div
         initial={{ y: -100, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
         className="fixed top-4 left-4 right-4 bg-gray-900 rounded-2xl p-4 shadow-2xl border border-gray-800 z-50 flex items-center justify-between"

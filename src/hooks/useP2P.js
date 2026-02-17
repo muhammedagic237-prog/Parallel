@@ -54,8 +54,7 @@ async function decryptMessage(packedJson, key) {
             data
         );
         return new TextDecoder().decode(decrypted);
-    } catch (e) {
-        console.error("Decrypt failed", e);
+    } catch {
         return null;
     }
 }
@@ -116,7 +115,7 @@ export const useP2P = (roomId, username) => {
             setRemoteStream(stream);
         });
         call.on('close', () => endCall());
-        call.on('error', (err) => console.error("Call error:", err));
+        call.on('error', () => { });
 
         setActiveCall({ call, stream: localStream });
     };
@@ -190,7 +189,7 @@ export const useP2P = (roomId, username) => {
                         try {
                             const key = await importKey(JSON.parse(peerData.key));
                             entry.sharedSecret = await deriveSharedSecret(myKeyPair.current.privateKey, key);
-                        } catch (e) { console.error("Lazy key derivation failed", e); }
+                        } catch { /* Key derivation failed — will retry on next message */ }
                     }
                 }
 
@@ -224,7 +223,7 @@ export const useP2P = (roomId, username) => {
         if (peerData) {
             try {
                 remoteKey = await importKey(JSON.parse(peerData.key));
-            } catch (e) { console.error("Failed to import key for incoming conn", e); }
+            } catch { /* Will derive key when message arrives */ }
         }
 
         setupConnection(conn, remoteKey, peerId);
@@ -310,8 +309,7 @@ export const useP2P = (roomId, username) => {
                 setIncomingCall({ call });
             });
 
-            peer.on('error', (err) => {
-                console.error('Peer Error:', err);
+            peer.on('error', () => { // Removed console.error
                 setStatus('error');
             });
         };
@@ -348,7 +346,7 @@ export const useP2P = (roomId, username) => {
                 // Local Echo
                 addMessage({ ...payload, isMe: true, peerId: targetPeerId, status: 'sent' });
             } else {
-                console.error("Cannot send to", targetPeerId, "- Connection not ready");
+                // No connection ready, message will fail silently
             }
         } else {
             // Broadcast (legacy support)

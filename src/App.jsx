@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
 
 import AuthGate from './components/auth/AuthGate';
 import PrivateChat from './components/private/PrivateChat';

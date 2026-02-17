@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowUpRight, ArrowDownRight, RefreshCcw, Settings, Wallet, CreditCard, Activity } from 'lucide-react';
-import { motion } from 'framer-motion';
+// framer-motion removed — not used in this component
 
 const DummyDashboard = ({ onLock }) => {
     const [assets, setAssets] = useState([

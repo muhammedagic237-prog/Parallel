@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Lock, Unlock, Fingerprint } from 'lucide-react';
+import { motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
+import { Lock, Fingerprint } from 'lucide-react';
 
 const AuthGate = ({ onAuthenticated }) => {
     const [pin, setPin] = useState("");
