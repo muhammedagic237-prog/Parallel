@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, Camera, Image as ImageIcon, Mic, Phone, Video, Heart, Info, Send, Plus, PhoneOff, MicOff, VideoOff, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Camera, Image as ImageIcon, Mic, Phone, Video, Heart, Info, Send, Plus, PhoneOff, MicOff, VideoOff, RefreshCw, Clock } from 'lucide-react';
 import { useP2P } from '../../hooks/useP2P';
 
 const PrivateChat = ({ onLock }) => {
@@ -11,6 +11,17 @@ const PrivateChat = ({ onLock }) => {
 
     // P2P Hook
     const p2p = useP2P(setupMode ? null : roomId, setupMode ? null : username);
+
+    // Screenshot Detection (Theater/Warning)
+    useEffect(() => {
+        const handleKeyUp = (e) => {
+            if (e.key === 'PrintScreen') {
+                alert("⚠️ Security Warning: Screenshots are discouraged in Parallel.");
+            }
+        };
+        window.addEventListener('keyup', handleKeyUp);
+        return () => window.removeEventListener('keyup', handleKeyUp);
+    }, []);
 
     const handleConnect = (e) => {
         e.preventDefault();
@@ -72,7 +83,15 @@ const PrivateChat = ({ onLock }) => {
     }
 
     return (
-        <div className="bg-black text-white h-[100dvh] w-full flex flex-col font-sans overflow-hidden">
+        <div className="bg-black text-white h-[100dvh] w-full flex flex-col font-sans overflow-hidden relative">
+            {/* Security Watermark (Visual Deterrent) */}
+            <div className="absolute inset-0 pointer-events-none z-0 opacity-[0.03] overflow-hidden flex flex-wrap content-center justify-center select-none">
+                {Array.from({ length: 12 }).map((_, i) => (
+                    <div key={i} className="w-64 h-64 flex items-center justify-center transform -rotate-45">
+                        <span className="text-2xl font-black text-white whitespace-nowrap">PARALLEL SECURE</span>
+                    </div>
+                ))}
+            </div>
             <AnimatePresence initial={false} mode="wait">
                 {activeChat ? (
                     <ConversationView
@@ -91,6 +110,8 @@ const PrivateChat = ({ onLock }) => {
                         onSelectChat={(peer) => setActiveChat(peer)}
                         status={p2p.status}
                         currentUser={username}
+                        retentionEnabled={p2p.retentionEnabled}
+                        onToggleRetention={p2p.toggleRetention}
                     />
                 )}
             </AnimatePresence>
@@ -121,7 +142,7 @@ const PrivateChat = ({ onLock }) => {
 };
 
 // --- INSTAGRAM DIRECT LIST ---
-const ChatListView = ({ onLock, onSelectChat, peers, status, currentUser }) => (
+const ChatListView = ({ onLock, onSelectChat, peers, status, currentUser, retentionEnabled, onToggleRetention }) => (
     <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -140,6 +161,14 @@ const ChatListView = ({ onLock, onSelectChat, peers, status, currentUser }) => (
                 </div>
             </div>
             <div className="flex gap-6 text-white">
+                <button
+                    onClick={() => onToggleRetention(!retentionEnabled)}
+                    className={`relative transition-colors ${retentionEnabled ? 'text-blue-500' : 'text-gray-500'}`}
+                >
+                    <Clock size={24} strokeWidth={1.5} />
+                    {retentionEnabled && <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full"></div>}
+                </button>
+
                 <div className="relative">
                     <Video size={28} strokeWidth={1.5} />
                     {status === 'connected' && <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-black"></div>}

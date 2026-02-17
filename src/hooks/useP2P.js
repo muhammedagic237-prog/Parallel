@@ -67,6 +67,41 @@ export const useP2P = (roomId, username) => {
     const [peers, setPeers] = useState([]);
     const [messages, setMessages] = useState([]); // { id, text, user, peerId, isMe, timestamp }
     const [myPeerId, setMyPeerId] = useState(null);
+    const [retentionEnabled, setRetentionEnabledState] = useState(false); // Default to FALSE (RAM Only)
+
+    // Toggle Retention (RAM Only Mode)
+    const toggleRetention = (enabled) => {
+        setRetentionEnabledState(enabled);
+        // Note: No persistence preference saved to disk to avoid forensics.
+        if (!enabled) {
+            // If disabled, we could clear old messages immediately, or just stop the 24h timer.
+            // For now, let's keep it simple: It just toggles the "24h policy".
+            // Actually, if disabled, standard behavior is ephemeral (which is what we have).
+        }
+    };
+
+    // 24h Pruning Interval (RAM Only)
+    useEffect(() => {
+        if (!retentionEnabled) return;
+
+        const interval = setInterval(() => {
+            const now = Date.now();
+            const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+
+            setMessages(prev => {
+                const valid = prev.filter(msg => (now - msg.timestamp) < TWENTY_FOUR_HOURS);
+                if (valid.length !== prev.length) {
+                    console.log("Pruned old RAM messages");
+                    return valid;
+                }
+                return prev;
+            });
+        }, 60 * 1000); // Check every minute
+
+        return () => clearInterval(interval);
+    }, [retentionEnabled]);
+
+    // Note: Removed localStorage saving effects. Messages are now strictly in RAM.
 
     // CALL STATE
     const [incomingCall, setIncomingCall] = useState(null); // { call, meta }
@@ -332,6 +367,9 @@ export const useP2P = (roomId, username) => {
         answerCall,
         endCall,
         activeCall,
-        remoteStream
+        remoteStream,
+        // Retention
+        retentionEnabled,
+        toggleRetention
     };
 };
