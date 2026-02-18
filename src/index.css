@@ -10,11 +10,11 @@ html,
 body {
     overscroll-behavior-y: auto;
     overflow: hidden;
-    /* Prevent body scroll, handle in app */
     user-select: none;
-    /* App-like feel, non-selectable UI */
     -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
+    /* Smooth momentum scrolling (iOS) */
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Allow text selection in inputs */
@@ -28,4 +28,60 @@ textarea {
 ::-webkit-scrollbar {
     width: 0px;
     background: transparent;
+}
+
+/* --- PERFORMANCE: GPU Acceleration --- */
+
+/* Chat scroll container — hardware accelerated */
+.overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    will-change: scroll-position;
+}
+
+/* Animated elements — GPU composited */
+[class*="animate-"] {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
+
+/* Message bubbles — GPU layer for smooth scroll */
+[class*="rounded-[22px]"] {
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
+
+/* Fixed/absolute positioned overlays — own layer */
+.fixed {
+    will-change: transform;
+    transform: translateZ(0);
+}
+
+/* Transitions — hardware accelerated */
+.transition-transform,
+.transition-all,
+.transition-colors,
+.transition-opacity {
+    will-change: transform, opacity;
+}
+
+/* Touch targets — instant feedback */
+button,
+[role="button"] {
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
 }

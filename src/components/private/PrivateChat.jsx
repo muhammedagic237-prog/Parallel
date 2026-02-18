@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
-import { ArrowLeft, Camera, Image as ImageIcon, Mic, Phone, Video, Info, Send, Plus, PhoneOff, MicOff, VideoOff, Clock, Check, CheckCheck, Zap, Smile } from 'lucide-react';
+import { ArrowLeft, Camera, Phone, Video, Send, Plus, PhoneOff, MicOff, VideoOff, Clock, Check, CheckCheck, Zap, Smile } from 'lucide-react';
 import { useP2P } from '../../hooks/useP2P';
 import { usePremium } from '../../context/PremiumContext';
 import PremiumStore from '../premium/PremiumStore';
@@ -161,7 +161,7 @@ const PrivateChat = ({ onLock }) => {
 };
 
 // --- INSTAGRAM DIRECT LIST ---
-const ChatListView = ({ onLock, onSelectChat, peers, status, currentUser, retentionEnabled, onToggleRetention, onPanicWipe, onOpenStore }) => (
+const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, retentionEnabled, onToggleRetention, onPanicWipe, onOpenStore }) => (
     <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -296,7 +296,7 @@ const ChatListView = ({ onLock, onSelectChat, peers, status, currentUser, retent
             ))}
         </div>
     </motion.div>
-);
+));
 
 // --- INSTAGRAM DM CONVERSATION (Pixel-Perfect Clone) ---
 
@@ -339,7 +339,9 @@ const getBubbleRounding = (isMe, isFirstInGroup, isLastInGroup) => {
     }
 };
 
-const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall, isTyping, onTyping, onOpenStore }) => {
+const REACTIONS = ['❤️', '🔥', '😂', '👍', '😮', '😢'];
+
+const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoCall, isTyping, onTyping, onOpenStore }) => {
     const [input, setInput] = useState("");
     const [reactionMsg, setReactionMsg] = useState(null);
     const [showStickers, setShowStickers] = useState(false);
@@ -347,9 +349,7 @@ const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall, 
     const endRef = useRef(null);
     const typingTimeout = useRef(null);
 
-    const REACTIONS = ['❤️', '🔥', '😂', '👍', '😮', '😢'];
-
-    const handleVideoCall = () => {
+    const handleVideoCall = useCallback(() => {
         if (!isPremium) {
             onOpenStore();
             return;
@@ -357,22 +357,22 @@ const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall, 
         navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
             onVideoCall(stream);
         }).catch(() => alert("Camera access required for video calls."));
-    };
+    }, [isPremium, onOpenStore, onVideoCall]);
 
-    const handleSend = (e) => {
+    const handleSend = useCallback((e) => {
         e.preventDefault();
         if (!input.trim()) return;
         onSendMessage(input, 'text');
         setInput("");
         if (navigator.vibrate) navigator.vibrate(10);
-    };
+    }, [input, onSendMessage]);
 
-    const handleHeartSend = () => {
+    const handleHeartSend = useCallback(() => {
         onSendMessage('❤️', 'sticker');
         if (navigator.vibrate) navigator.vibrate(10);
-    };
+    }, [onSendMessage]);
 
-    const handleInputChange = (e) => {
+    const handleInputChange = useCallback((e) => {
         setInput(e.target.value);
         if (!typingTimeout.current) {
             onTyping();
@@ -380,7 +380,7 @@ const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall, 
                 typingTimeout.current = null;
             }, 2000);
         }
-    };
+    }, [onTyping]);
 
     useEffect(() => {
         endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -652,7 +652,7 @@ const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall, 
             </AnimatePresence>
         </motion.div>
     );
-};
+});
 
 
 // --- VIDEO CALL COMPONENTS ---

@@ -469,7 +469,7 @@ export const useP2P = (roomId, username) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [roomId, username]);
 
-    // Send Message (Direct or Broadcast)
+    // Send Message (Direct or Broadcast) — OPTIMISTIC UI
     const sendMessage = async (text, targetPeerId, type = 'text') => {
         const payload = {
             id: Date.now() + Math.random(),
@@ -479,16 +479,28 @@ export const useP2P = (roomId, username) => {
             timestamp: Date.now()
         };
 
+        // OPTIMISTIC: Show message INSTANTLY before encryption
+        const optimisticMsg = {
+            ...payload,
+            isMe: true,
+            peerId: targetPeerId || 'broadcast',
+            status: 'sending'
+        };
+        addMessage(optimisticMsg);
+
+        const updateStatus = (status) => {
+            setMessages(prev => prev.map(m =>
+                m.id === payload.id ? { ...m, status } : m
+            ));
+        };
+
         const trySend = async (peerId) => {
             let entry = connections.current[peerId];
 
-            // If no entry or closed, try to reconnect ONCE
             if (!entry || !entry.conn || !entry.conn.open) {
-                console.log(`[P2P] No open connection to ${peerId}, attempting reconnect...`);
                 const peerData = peersRef.current.find(p => p.id === peerId);
                 if (peerData) {
                     await connectToPeer(peerData);
-                    // Wait for connection to establish
                     await new Promise(r => setTimeout(r, 1500));
                     entry = connections.current[peerId];
                 }
@@ -505,20 +517,14 @@ export const useP2P = (roomId, username) => {
                 }
             }
 
-            console.warn(`[P2P] Failed to send to ${peerId} — conn:${!!entry?.conn} open:${entry?.conn?.open} secret:${!!entry?.sharedSecret}`);
+            console.warn(`[P2P] Failed to send to ${peerId}`);
             return false;
         };
 
         if (targetPeerId) {
             const success = await trySend(targetPeerId);
-            addMessage({
-                ...payload,
-                isMe: true,
-                peerId: targetPeerId,
-                status: success ? 'sent' : 'failed'
-            });
+            updateStatus(success ? 'sent' : 'failed');
         } else {
-            // Broadcast
             const entries = Object.entries(connections.current);
             for (const [peerId, entry] of entries) {
                 if (entry.conn && entry.conn.open && entry.sharedSecret) {
@@ -530,7 +536,7 @@ export const useP2P = (roomId, username) => {
                     }
                 }
             }
-            addMessage({ ...payload, isMe: true, peerId: 'broadcast', status: 'sent' });
+            updateStatus('sent');
         }
     };
 
