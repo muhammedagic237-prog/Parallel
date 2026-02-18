@@ -400,8 +400,16 @@ const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall, 
                     return (
                         <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-1 relative group`}>
                             {!isMe && (
-                                <div className="w-7 h-7 rounded-full bg-gray-700 mr-2 flex-shrink-0 self-end overflow-hidden">
-                                    {showAvatar && <div className="w-full h-full flex items-center justify-center text-[10px]">{(msg.user || '?')[0]}</div>}
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 p-[1.5px] mr-2 flex-shrink-0 self-end overflow-hidden shadow-sm">
+                                    <div className="w-full h-full rounded-full bg-black flex items-center justify-center">
+                                        {showAvatar ? (
+                                            <span className="text-xs font-bold text-white uppercase select-none">
+                                                {(msg.user || '?')[0]}
+                                            </span>
+                                        ) : (
+                                            <div className="w-full h-full bg-gray-800" />
+                                        )}
+                                    </div>
                                 </div>
                             )}
 
@@ -494,21 +502,20 @@ const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall, 
                     {!input && <Mic size={20} className="text-white" />}
                     {!input && <ImageIcon size={20} className="text-white" />}
                     {input && <button type="submit" className="text-[#0095F6] font-semibold text-sm">Send</button>}
+                    {!input && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!isPremium) onOpenStore();
+                                else setShowStickers(!showStickers);
+                            }}
+                            className="text-white hover:text-gray-300 transition-colors"
+                        >
+                            <Smile size={24} strokeWidth={1.5} />
+                        </button>
+                    )}
                 </div>
 
-                {!input && (
-                    <button
-                        type="button"
-                        onClick={() => {
-                            if (!isPremium) onOpenStore();
-                            else setShowStickers(!showStickers);
-                        }}
-                        className="h-10 w-10 flex items-center justify-center rounded-full text-white cursor-pointer hover:bg-[#121212] relative"
-                    >
-                        <Smile size={24} strokeWidth={1.5} />
-                        {!isPremium && <div className="absolute top-1 right-1 bg-yellow-400 rounded-full p-[2px]"><Zap size={6} className="text-black fill-current" /></div>}
-                    </button>
-                )}
             </form>
 
             <AnimatePresence>
