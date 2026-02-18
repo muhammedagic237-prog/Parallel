@@ -328,11 +328,12 @@ export const useP2P = (roomId, username) => {
     }, [roomId, username]);
 
     // Send Message (Direct or Broadcast)
-    const sendMessage = async (text, targetPeerId) => {
+    const sendMessage = async (text, targetPeerId, type = 'text') => {
         const payload = {
             id: Date.now() + Math.random(),
             user: username,
             text,
+            type, // 'text' | 'sticker' | 'image' (future)
             timestamp: Date.now()
         };
 

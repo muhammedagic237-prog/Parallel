@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
-import { ArrowLeft, Camera, Image as ImageIcon, Mic, Phone, Video, Heart, Info, Send, Plus, PhoneOff, MicOff, VideoOff, Clock, Check, CheckCheck, Zap } from 'lucide-react';
+import { ArrowLeft, Camera, Image as ImageIcon, Mic, Phone, Video, Heart, Info, Send, Plus, PhoneOff, MicOff, VideoOff, Clock, Check, CheckCheck, Zap, Smile } from 'lucide-react';
 import { useP2P } from '../../hooks/useP2P';
+import { usePremium } from '../../context/PremiumContext';
+import PremiumStore from '../premium/PremiumStore';
+import StickerPicker from '../premium/StickerPicker';
 
 const PrivateChat = ({ onLock }) => {
     const [activeChat, setActiveChat] = useState(null);
     const [setupMode, setSetupMode] = useState(true);
     const [roomId, setRoomId] = useState("");
+    const [showStore, setShowStore] = useState(false);
+    const { isPremium } = usePremium();
     const [username, setUsername] = useState("");
 
     // P2P Hook
@@ -102,11 +107,12 @@ const PrivateChat = ({ onLock }) => {
                         key="conversation"
                         chat={activeChat}
                         messages={p2p.messages.filter(m => m.peerId === activeChat.id)}
-                        onSendMessage={(text) => p2p.sendMessage(text, activeChat.id)}
+                        onSendMessage={(text, type) => p2p.sendMessage(text, activeChat.id, type)}
                         onVideoCall={(stream) => p2p.callPeer(activeChat.id, stream)}
                         onBack={() => setActiveChat(null)}
                         isTyping={!!p2p.typingPeers[activeChat.id]}
                         onTyping={() => p2p.sendTyping(activeChat.id)}
+                        onOpenStore={() => setShowStore(true)}
                     />
                 ) : (
                     <ChatListView
@@ -119,6 +125,7 @@ const PrivateChat = ({ onLock }) => {
                         retentionEnabled={p2p.retentionEnabled}
                         onToggleRetention={p2p.toggleRetention}
                         onPanicWipe={() => { p2p.panicWipe(); onLock(); }}
+                        onOpenStore={() => setShowStore(true)}
                     />
                 )}
             </AnimatePresence>
@@ -144,12 +151,17 @@ const PrivateChat = ({ onLock }) => {
                     onEnd={() => p2p.endCall()}
                 />
             )}
+
+            {/* PREMIUM STORE - Global Overlay */}
+            <AnimatePresence>
+                {showStore && <PremiumStore onClose={() => setShowStore(false)} />}
+            </AnimatePresence>
         </div>
     );
 };
 
 // --- INSTAGRAM DIRECT LIST ---
-const ChatListView = ({ onLock, onSelectChat, peers, status, currentUser, retentionEnabled, onToggleRetention, onPanicWipe }) => (
+const ChatListView = ({ onLock, onSelectChat, peers, status, currentUser, retentionEnabled, onToggleRetention, onPanicWipe, onOpenStore }) => (
     <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -168,6 +180,15 @@ const ChatListView = ({ onLock, onSelectChat, peers, status, currentUser, retent
                 </div>
             </div>
             <div className="flex gap-5 text-white items-center">
+                {/* Premium Button */}
+                <button
+                    onClick={onOpenStore}
+                    className="text-yellow-400 hover:text-yellow-300 active:scale-95 transition-all"
+                    title="Premium Store"
+                >
+                    <Zap size={22} className="fill-current" />
+                </button>
+
                 {/* Panic Wipe Button */}
                 <button
                     onClick={onPanicWipe}
@@ -278,15 +299,21 @@ const ChatListView = ({ onLock, onSelectChat, peers, status, currentUser, retent
 );
 
 // --- INSTAGRAM CONVERSATION ---
-const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall, isTyping, onTyping }) => {
+const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall, isTyping, onTyping, onOpenStore }) => {
     const [input, setInput] = useState("");
     const [reactionMsg, setReactionMsg] = useState(null);
+    const [showStickers, setShowStickers] = useState(false);
+    const { isPremium } = usePremium();
     const endRef = useRef(null);
     const typingTimeout = useRef(null);
 
     const REACTIONS = ['❤️', '🔥', '😂', '👍', '😮', '😢'];
 
     const handleVideoCall = () => {
+        if (!isPremium) {
+            onOpenStore();
+            return;
+        }
         navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
             onVideoCall(stream);
         }).catch(() => alert("Camera access required for video calls."));
@@ -295,7 +322,7 @@ const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall, 
     const handleSend = (e) => {
         e.preventDefault();
         if (!input.trim()) return;
-        onSendMessage(input);
+        onSendMessage(input, 'text');
         setInput("");
         // Haptic feedback
         if (navigator.vibrate) navigator.vibrate(10);
@@ -354,8 +381,11 @@ const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall, 
                     </div>
                 </div>
                 <div className="flex gap-6 text-white pr-2">
-                    <Phone size={24} strokeWidth={1.5} />
-                    <button onClick={handleVideoCall}><Video size={28} strokeWidth={1.5} /></button>
+                    <Phone size={24} strokeWidth={1.5} className="opacity-50" />
+                    <button onClick={handleVideoCall} className="relative">
+                        <Video size={28} strokeWidth={1.5} className={!isPremium ? "text-blue-400" : "text-white"} />
+                        {!isPremium && <div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full p-[2px]"><Zap size={8} className="text-black fill-current" /></div>}
+                    </button>
                     <Info size={24} strokeWidth={1.5} />
                 </div>
             </header>
@@ -396,21 +426,27 @@ const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall, 
                                     )}
                                 </AnimatePresence>
 
-                                <div
-                                    onDoubleClick={() => setReactionMsg(msg.id)}
-                                    className={`
-                                        max-w-[70%] px-4 py-3 text-[15px] leading-snug break-words cursor-pointer select-none
-                                        ${isMe
-                                            ? 'bg-[#3797F0] text-white rounded-[22px] rounded-br-md'
-                                            : 'bg-[#262626] text-white rounded-[22px] rounded-bl-md'}
-                                    `}
-                                >
-                                    {msg.text}
-                                </div>
+                                {msg.type === 'sticker' ? (
+                                    <div className="text-8xl hover:scale-110 transition-transform cursor-pointer" onDoubleClick={() => setReactionMsg(msg.id)}>
+                                        {msg.text}
+                                    </div>
+                                ) : (
+                                    <div
+                                        onDoubleClick={() => setReactionMsg(msg.id)}
+                                        className={`
+                                            max-w-[70%] px-4 py-3 text-[15px] leading-snug break-words cursor-pointer select-none
+                                            ${isMe
+                                                ? 'bg-[#3797F0] text-white rounded-[22px] rounded-br-md'
+                                                : 'bg-[#262626] text-white rounded-[22px] rounded-bl-md'}
+                                        `}
+                                    >
+                                        {msg.text}
+                                    </div>
+                                )}
 
-                                {/* Delivery Status Ticks */}
+                                {/* Delivery Status Ticks (Only for text for now, or subtle for stickers) */}
                                 {isMe && (
-                                    <div className="flex justify-end mt-0.5 pr-1">
+                                    <div className={`flex justify-end mt-0.5 pr-1 ${msg.type === 'sticker' ? 'opacity-50' : ''}`}>
                                         {msg.status === 'delivered' ? (
                                             <CheckCheck size={14} className="text-blue-400" />
                                         ) : (
@@ -455,15 +491,48 @@ const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall, 
                     />
                     {!input && <Mic size={20} className="text-white" />}
                     {!input && <ImageIcon size={20} className="text-white" />}
+                    {!input && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!isPremium) onOpenStore();
+                                else setShowStickers(!showStickers);
+                            }}
+                            className="relative hover:text-yellow-400 transition-colors"
+                        >
+                            <Smile size={20} className="text-white" />
+                            {!isPremium && <div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full p-[1px]"><Zap size={6} className="text-black fill-current" /></div>}
+                        </button>
+                    )}
                     {input && <button type="submit" className="text-[#0095F6] font-semibold text-sm">Send</button>}
                 </div>
 
                 {!input && (
-                    <div className="h-10 w-10 flex items-center justify-center rounded-full text-white cursor-pointer hover:bg-[#121212]">
-                        <Heart size={24} strokeWidth={1.5} />
-                    </div>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (!isPremium) onOpenStore();
+                            else setShowStickers(!showStickers);
+                        }}
+                        className="h-10 w-10 flex items-center justify-center rounded-full text-white cursor-pointer hover:bg-[#121212] relative"
+                    >
+                        <Smile size={24} strokeWidth={1.5} />
+                        {!isPremium && <div className="absolute top-1 right-1 bg-yellow-400 rounded-full p-[2px]"><Zap size={6} className="text-black fill-current" /></div>}
+                    </button>
                 )}
             </form>
+
+            <AnimatePresence>
+                {showStickers && (
+                    <StickerPicker
+                        onClose={() => setShowStickers(false)}
+                        onSelect={(sticker) => {
+                            onSendMessage(sticker, 'sticker');
+                            setShowStickers(false);
+                        }}
+                    />
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 };
