@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, CreditCard, Lock, CheckCircle, Loader2 } from 'lucide-react';
 import { usePremium } from '../../context/PremiumContext';
 
-const PaymentModal = ({ onClose }) => {
+const PaymentModal = ({ onClose, onSuccess }) => {
     const { unlockPremium } = usePremium();
     const [step, setStep] = useState('form'); // form | processing | success
     const [cardNumber, setCardNumber] = useState('');
@@ -17,7 +17,8 @@ const PaymentModal = ({ onClose }) => {
             setStep('success');
             unlockPremium();
             setTimeout(() => {
-                onClose();
+                if (onSuccess) onSuccess();
+                else onClose();
             }, 2000);
         }, 1500);
     };

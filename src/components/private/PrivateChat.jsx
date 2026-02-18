@@ -249,7 +249,7 @@ const ChatListView = ({ onLock, onSelectChat, peers, status, currentUser, retent
                     <div className="w-16 h-16 rounded-full p-[2px] bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600">
                         <div className="w-full h-full rounded-full bg-black p-[2px]">
                             <div className="w-full h-full rounded-full bg-gray-700 flex items-center justify-center text-lg font-semibold cursor-pointer">
-                                {peer.user[0].toUpperCase()}
+                                {(peer.user || '?')[0].toUpperCase()}
                             </div>
                         </div>
                     </div>
@@ -279,7 +279,7 @@ const ChatListView = ({ onLock, onSelectChat, peers, status, currentUser, retent
                     className="w-full px-4 py-3 flex items-center gap-3 active:bg-[#121212] transition-colors"
                 >
                     <div className="w-14 h-14 rounded-full bg-gray-700 flex items-center justify-center font-bold text-lg text-white relative">
-                        {peer.user[0].toUpperCase()}
+                        {(peer.user || '?')[0].toUpperCase()}
                         <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-black"></div>
                     </div>
                     <div className="flex-1 text-left">
@@ -359,7 +359,7 @@ const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall, 
                         <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 p-[1.5px]">
                             <div className="w-full h-full rounded-full bg-black flex items-center justify-center">
                                 <div className="w-full h-full rounded-full bg-gray-700 flex items-center justify-center text-[10px] text-white">
-                                    {chat.name[0]}
+                                    {(chat.name || '?')[0]}
                                 </div>
                             </div>
                         </div>
@@ -401,7 +401,7 @@ const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall, 
                         <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-1 relative group`}>
                             {!isMe && (
                                 <div className="w-7 h-7 rounded-full bg-gray-700 mr-2 flex-shrink-0 self-end overflow-hidden">
-                                    {showAvatar && <div className="w-full h-full flex items-center justify-center text-[10px]">{msg.user[0]}</div>}
+                                    {showAvatar && <div className="w-full h-full flex items-center justify-center text-[10px]">{(msg.user || '?')[0]}</div>}
                                 </div>
                             )}
 
@@ -493,19 +493,6 @@ const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall, 
                     />
                     {!input && <Mic size={20} className="text-white" />}
                     {!input && <ImageIcon size={20} className="text-white" />}
-                    {!input && (
-                        <button
-                            type="button"
-                            onClick={() => {
-                                if (!isPremium) onOpenStore();
-                                else setShowStickers(!showStickers);
-                            }}
-                            className="relative hover:text-yellow-400 transition-colors"
-                        >
-                            <Smile size={20} className="text-white" />
-                            {!isPremium && <div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full p-[1px]"><Zap size={6} className="text-black fill-current" /></div>}
-                        </button>
-                    )}
                     {input && <button type="submit" className="text-[#0095F6] font-semibold text-sm">Send</button>}
                 </div>
 

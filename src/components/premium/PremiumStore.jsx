@@ -127,9 +127,10 @@ const PremiumStore = ({ onClose }) => {
                     <PaymentModal onClose={() => {
                         setShowPayment(false);
                         // If premium was unlocked in modal, close store too after short delay
-                        if (localStorage.getItem('parallel_premium_unlocked') === 'true') {
-                            setTimeout(onClose, 500);
-                        }
+                        // Use isPremium from context (not localStorage) to avoid stale reads
+                    }} onSuccess={() => {
+                        setShowPayment(false);
+                        setTimeout(onClose, 500);
                     }} />
                 )}
             </AnimatePresence>

@@ -50,8 +50,8 @@ export const subscribeToRoom = (roomId, onPeersUpdate) => {
     return onSnapshot(peersRef, (snapshot) => {
         const peers = [];
         const now = Date.now();
-        snapshot.forEach(doc => {
-            const data = doc.data();
+        snapshot.forEach(docSnap => {
+            const data = docSnap.data();
             // Filter out ghosts older than 60 seconds (if lastSeen exists)
             // Note: serverTimestamp() is null initially on local write, so allow null
             let isAlive = true;
@@ -63,7 +63,7 @@ export const subscribeToRoom = (roomId, onPeersUpdate) => {
             }
 
             if (isAlive) {
-                peers.push({ id: doc.id, ...data });
+                peers.push({ id: docSnap.id, ...data });
             }
         });
         onPeersUpdate(peers);

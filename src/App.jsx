@@ -60,20 +60,11 @@ function App() {
         <AnimatePresence mode="wait">
           {locked ? (
             <AuthGate key="auth" onAuthenticated={handleAuth} />
-          ) : (
-            mode === 'dummy' ? (
-              <DummyDashboard key="dummy" onLock={handleLock} />
-            ) : null
-          )}
-
-
-          {/* 
-        PrivateChat is ALWAYS mounted (but hidden) to preserve P2P RAM state.
-        It is only visible when !locked and mode === 'private'.
-      */}
-          <div className="absolute inset-0 z-20" style={{ display: (!locked && mode === 'private') ? 'block' : 'none' }}>
+          ) : mode === 'dummy' ? (
+            <DummyDashboard key="dummy" onLock={handleLock} />
+          ) : mode === 'private' ? (
             <PrivateChat key="private" onLock={handleLock} />
-          </div>
+          ) : null}
         </AnimatePresence>
       </div>
     </PremiumProvider>

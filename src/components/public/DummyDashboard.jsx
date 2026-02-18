@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, ArrowUpRight, ArrowDownRight, RefreshCcw, Settings, Wallet, CreditCard, Activity } from 'lucide-react';
 // framer-motion removed — not used in this component
 
@@ -11,7 +11,7 @@ const DummyDashboard = ({ onLock }) => {
     const [loading, setLoading] = useState(false);
 
     // Fetch Live Prices (Free CoinGecko API)
-    const fetchPrices = async () => {
+    const fetchPrices = useCallback(async () => {
         setLoading(true);
         try {
             const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd&include_24hr_change=true');
@@ -35,13 +35,13 @@ const DummyDashboard = ({ onLock }) => {
         } finally {
             setTimeout(() => setLoading(false), 800);
         }
-    };
+    }, []); // no deps — only uses setAssets which is stable
 
     useEffect(() => {
         fetchPrices();
-        const interval = setInterval(fetchPrices, 60000); // Update every minute
+        const interval = setInterval(fetchPrices, 60000);
         return () => clearInterval(interval);
-    }, []);
+    }, [fetchPrices]);
 
     const totalBalance = assets.reduce((sum, asset) => sum + (asset.price * asset.balance), 0);
     const weightedChange = assets.reduce((sum, asset) => {
