@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
-import { ArrowLeft, Camera, Image as ImageIcon, Mic, Phone, Video, Heart, Info, Send, Plus, PhoneOff, MicOff, VideoOff, Clock, Check, CheckCheck, Zap, Smile } from 'lucide-react';
+import { ArrowLeft, Camera, Image as ImageIcon, Mic, Phone, Video, Info, Send, Plus, PhoneOff, MicOff, VideoOff, Clock, Check, CheckCheck, Zap, Smile } from 'lucide-react';
 import { useP2P } from '../../hooks/useP2P';
 import { usePremium } from '../../context/PremiumContext';
 import PremiumStore from '../premium/PremiumStore';
