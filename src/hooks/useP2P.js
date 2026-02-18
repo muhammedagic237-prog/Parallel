@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 import { joinRoom, subscribeToRoom, updateHeartbeat, deletePeer } from '../services/firebase';
 
@@ -64,20 +64,14 @@ async function decryptMessage(packedJson, key) {
 export const useP2P = (roomId, username) => {
     const [status, setStatus] = useState('disconnected');
     const [peers, setPeers] = useState([]);
-    const [messages, setMessages] = useState([]); // { id, text, user, peerId, isMe, timestamp, status }
+    const [messages, setMessages] = useState([]);
     const [myPeerId, setMyPeerId] = useState(null);
     const [retentionEnabled, setRetentionEnabledState] = useState(false);
-    const [typingPeers, setTypingPeers] = useState({}); // { peerId: timestamp }
+    const [typingPeers, setTypingPeers] = useState({});
 
     // Toggle Retention (RAM Only Mode)
     const toggleRetention = (enabled) => {
         setRetentionEnabledState(enabled);
-        // Note: No persistence preference saved to disk to avoid forensics.
-        if (!enabled) {
-            // If disabled, we could clear old messages immediately, or just stop the 24h timer.
-            // For now, let's keep it simple: It just toggles the "24h policy".
-            // Actually, if disabled, standard behavior is ephemeral (which is what we have).
-        }
     };
 
     // 24h Pruning Interval (RAM Only)
@@ -93,16 +87,14 @@ export const useP2P = (roomId, username) => {
                 if (valid.length !== prev.length) return valid;
                 return prev;
             });
-        }, 60 * 1000); // Check every minute
+        }, 60 * 1000);
 
         return () => clearInterval(interval);
     }, [retentionEnabled]);
 
-    // Note: Removed localStorage saving effects. Messages are now strictly in RAM.
-
     // CALL STATE
-    const [incomingCall, setIncomingCall] = useState(null); // { call, meta }
-    const [activeCall, setActiveCall] = useState(null); // { call, stream }
+    const [incomingCall, setIncomingCall] = useState(null);
+    const [activeCall, setActiveCall] = useState(null);
     const [remoteStream, setRemoteStream] = useState(null);
 
     // --- CALL ACTIONS ---
@@ -110,6 +102,7 @@ export const useP2P = (roomId, username) => {
         if (!peerInstance.current) return;
 
         const call = peerInstance.current.call(remoteId, localStream);
+        if (!call) return;
 
         call.on('stream', (stream) => {
             setRemoteStream(stream);
@@ -150,21 +143,44 @@ export const useP2P = (roomId, username) => {
     const connections = useRef({});
     const myKeyPair = useRef(null);
     const peerInstance = useRef(null);
-    const peersRef = useRef([]); // Sync access to peers for incoming connections
+    const peersRef = useRef([]);
+    const heartbeatRef = useRef(null);
+    const roomIdRef = useRef(null);
+    const myPeerIdRef = useRef(null);
 
-    // Helper: Add Message to State
-    const addMessage = (msg) => {
-        setMessages(prev => [...prev, msg].sort((a, b) => a.timestamp - b.timestamp));
-    };
+    // Helper: Add Message to State (deduplicate by id)
+    const addMessage = useCallback((msg) => {
+        setMessages(prev => {
+            // Prevent duplicate messages
+            if (prev.some(m => m.id === msg.id)) return prev;
+            return [...prev, msg].sort((a, b) => a.timestamp - b.timestamp);
+        });
+    }, []);
 
-    // --- CONNECTION HANDLERS (Defined before useEffect to avoid hoisting issues) ---
+    // --- CONNECTION HANDLERS ---
 
     const setupConnection = async (conn, remoteKey, peerId) => {
+        // IMPORTANT: Wait for connection to actually open before setting up
+        const onOpen = () => {
+            console.log(`[P2P] Connection OPEN with ${peerId}`);
+        };
+
+        // If conn is already open, skip waiting
+        if (!conn.open) {
+            conn.on('open', onOpen);
+        } else {
+            onOpen();
+        }
+
         connections.current[peerId] = { conn };
 
         // If we have key (outgoing), derive immediately
         if (remoteKey) {
-            connections.current[peerId].sharedSecret = await deriveSharedSecret(myKeyPair.current.privateKey, remoteKey);
+            try {
+                connections.current[peerId].sharedSecret = await deriveSharedSecret(myKeyPair.current.privateKey, remoteKey);
+            } catch (err) {
+                console.error(`[P2P] Failed to derive shared secret for ${peerId}:`, err);
+            }
         }
 
         conn.on('data', async (data) => {
@@ -181,6 +197,7 @@ export const useP2P = (roomId, username) => {
 
             if (data.payload) {
                 const entry = connections.current[peerId];
+                if (!entry) return;
 
                 // If missing secret (incoming), try to lazy load
                 if (!entry.sharedSecret) {
@@ -189,34 +206,57 @@ export const useP2P = (roomId, username) => {
                         try {
                             const key = await importKey(JSON.parse(peerData.key));
                             entry.sharedSecret = await deriveSharedSecret(myKeyPair.current.privateKey, key);
-                        } catch { /* Key derivation failed — will retry on next message */ }
+                        } catch (err) {
+                            console.error(`[P2P] Key derivation failed for ${peerId}:`, err);
+                        }
                     }
                 }
 
                 if (!entry.sharedSecret) {
+                    console.warn(`[P2P] No shared secret for ${peerId}, dropping message`);
                     return;
                 }
 
                 const json = await decryptMessage(data.payload, entry.sharedSecret);
                 if (json) {
-                    const msg = JSON.parse(json);
-                    addMessage({ ...msg, peerId, isMe: false, status: 'delivered' });
-                    // Send delivery confirmation back
-                    if (entry.conn.open) {
-                        entry.conn.send({ type: 'delivered', msgId: msg.id });
+                    try {
+                        const msg = JSON.parse(json);
+                        addMessage({ ...msg, peerId, isMe: false, status: 'delivered' });
+                        // Send delivery confirmation back
+                        if (entry.conn && entry.conn.open) {
+                            entry.conn.send({ type: 'delivered', msgId: msg.id });
+                        }
+                    } catch (err) {
+                        console.error(`[P2P] Failed to parse decrypted message:`, err);
                     }
                 }
             }
         });
 
         conn.on('close', () => {
+            console.log(`[P2P] Connection CLOSED with ${peerId}`);
+            delete connections.current[peerId];
+        });
+
+        conn.on('error', (err) => {
+            console.error(`[P2P] Connection ERROR with ${peerId}:`, err);
             delete connections.current[peerId];
         });
     };
 
     const handleIncomingConnection = async (conn) => {
-        // Attempt to find peer key immediately
         const peerId = conn.peer;
+        console.log(`[P2P] Incoming connection from ${peerId}`);
+
+        // If we already have a connection to this peer, close the old one
+        if (connections.current[peerId]) {
+            console.log(`[P2P] Replacing existing connection to ${peerId}`);
+            try {
+                connections.current[peerId].conn.close();
+            } catch { /* ignore */ }
+            delete connections.current[peerId];
+        }
+
         const peerData = peersRef.current.find(p => p.id === peerId);
         let remoteKey = null;
 
@@ -231,128 +271,200 @@ export const useP2P = (roomId, username) => {
 
     const connectToPeer = async (remotePeerData) => {
         const peer = peerInstance.current;
-        if (!peer) return;
+        if (!peer || peer.destroyed) return;
 
-        const conn = peer.connect(remotePeerData.id, {
-            metadata: { user: username }
-        });
+        // Don't connect if we already have an open connection
+        const existing = connections.current[remotePeerData.id];
+        if (existing && existing.conn && existing.conn.open) {
+            return;
+        }
 
-        const remoteKey = await importKey(JSON.parse(remotePeerData.key));
-        setupConnection(conn, remoteKey, remotePeerData.id);
+        // Clean up stale connection entry
+        if (existing) {
+            try { existing.conn.close(); } catch { /* ignore */ }
+            delete connections.current[remotePeerData.id];
+        }
+
+        try {
+            console.log(`[P2P] Connecting to peer ${remotePeerData.id}...`);
+            const conn = peer.connect(remotePeerData.id, {
+                metadata: { user: username },
+                reliable: true
+            });
+
+            if (!conn) {
+                console.error(`[P2P] peer.connect returned null for ${remotePeerData.id}`);
+                return;
+            }
+
+            const remoteKey = await importKey(JSON.parse(remotePeerData.key));
+            await setupConnection(conn, remoteKey, remotePeerData.id);
+        } catch (err) {
+            console.error(`[P2P] Failed to connect to ${remotePeerData.id}:`, err);
+        }
     };
 
     useEffect(() => {
         if (!roomId || !username) return;
 
         let unsubscribeFirestore = () => { };
+        let destroyed = false;
+
+        roomIdRef.current = roomId;
 
         const init = async () => {
             setStatus('connecting');
 
-            // 1. Generate Keys
+            // 1. Generate Keys (FRESH every time for security — keys are ephemeral)
             myKeyPair.current = await generateKeyPair();
             const exportedPublicKey = await exportKey(myKeyPair.current.publicKey);
 
-            // 2. Init PeerJS (STABLE ID)
-            // Try to recover session ID to prevent ghosts on refresh
-            const storageKey = `parallel_peer_id_${roomId}_${username}`;
-            let storedId = sessionStorage.getItem(storageKey);
-
-            if (!storedId) {
-                storedId = `parallel_${roomId}_${username}_${Math.floor(Math.random() * 100000)}`;
-                sessionStorage.setItem(storageKey, storedId);
-            }
-
-            const id = storedId;
+            // 2. Init PeerJS — Generate a FRESH ID every session
+            // We generate new IDs to match new crypto keys. Old ghosts are cleaned by heartbeat timeout.
+            const id = `parallel_${roomId}_${username}_${Date.now().toString(36)}`;
             setMyPeerId(id);
+            myPeerIdRef.current = id;
 
             const peer = new Peer(id, {
                 debug: 0,
                 config: {
                     iceServers: [
                         { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:global.stun.twilio.com:3478' }
+                        { urls: 'stun:global.stun.twilio.com:3478' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' }
                     ]
                 }
             });
 
             peerInstance.current = peer;
-            peersRef.current = []; // Reset peers ref
+            peersRef.current = [];
 
-            peer.on('open', async (id) => {
-
+            peer.on('open', async (openedId) => {
+                if (destroyed) return;
+                console.log(`[P2P] PeerJS OPEN: ${openedId}`);
                 setStatus('connected');
 
-                // 3. Join Room
-                await joinRoom(roomId, id, {
+                // 3. Join Room (register in Firestore)
+                await joinRoom(roomId, openedId, {
                     user: username,
                     key: JSON.stringify(exportedPublicKey)
                 });
 
-                // 4. Subscribe
-                unsubscribeFirestore = subscribeToRoom(roomId, (roomPeers) => {
-                    const others = roomPeers.filter(p => p.id !== id);
-                    setPeers(others);
-                    peersRef.current = others; // Update sync ref
+                // 4. Start Heartbeat (keeps us "alive" in Firestore)
+                if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+                heartbeatRef.current = setInterval(() => {
+                    if (!destroyed) {
+                        updateHeartbeat(roomId, openedId);
+                    }
+                }, 10000);
 
-                    others.forEach(async (p) => {
-                        if (!connections.current[p.id]) {
+                // 5. Subscribe to room peers
+                unsubscribeFirestore = subscribeToRoom(roomId, (roomPeers) => {
+                    if (destroyed) return;
+
+                    const others = roomPeers.filter(p => p.id !== openedId);
+                    setPeers(others);
+                    peersRef.current = others;
+
+                    // Connect to any unconnected peers
+                    others.forEach((p) => {
+                        const existing = connections.current[p.id];
+                        if (!existing || !existing.conn || !existing.conn.open) {
                             connectToPeer(p);
-                        } else {
-                            // If we have a connection entry but no secret (e.g. came from incoming), try to derive now
-                            const entry = connections.current[p.id];
-                            if (entry && !entry.sharedSecret) {
-                                const key = await importKey(JSON.parse(p.key));
-                                entry.sharedSecret = await deriveSharedSecret(myKeyPair.current.privateKey, key);
-                            }
+                        } else if (existing && !existing.sharedSecret) {
+                            // Try to derive key if missing
+                            (async () => {
+                                try {
+                                    const key = await importKey(JSON.parse(p.key));
+                                    existing.sharedSecret = await deriveSharedSecret(myKeyPair.current.privateKey, key);
+                                } catch { /* ignore */ }
+                            })();
                         }
                     });
                 });
             });
 
-            // HEARTBEAT LOOP (Keep alive every 10s)
-            const heartbeatInterval = setInterval(() => {
-                if (id && roomId) {
-                    updateHeartbeat(roomId, id);
-                }
-            }, 10000);
-
             peer.on('connection', (conn) => handleIncomingConnection(conn));
 
             // VIDEO CALL LISTENER
             peer.on('call', (call) => {
-
+                if (destroyed) return;
                 setIncomingCall({ call });
             });
 
-            peer.on('error', () => {
-                setStatus('error');
+            peer.on('error', (err) => {
+                console.error('[P2P] PeerJS error:', err);
+                // If the error is "ID taken" (stale session), generate new ID
+                if (err.type === 'unavailable-id') {
+                    console.log('[P2P] ID taken, will retry with new ID on next init');
+                    setStatus('error');
+                } else if (err.type === 'peer-unavailable') {
+                    // Peer we tried to connect to doesn't exist — this is normal for stale peers
+                    console.warn('[P2P] Peer unavailable (may be offline):', err.message);
+                } else {
+                    setStatus('error');
+                }
+            });
+
+            peer.on('disconnected', () => {
+                if (destroyed) return;
+                console.log('[P2P] PeerJS disconnected, attempting reconnect...');
+                setStatus('connecting');
+                // Try to reconnect
+                try {
+                    peer.reconnect();
+                } catch {
+                    setStatus('error');
+                }
             });
         };
 
-        // Initialize Peer (Client Side Only)
+        // Initialize
         if (typeof window !== 'undefined') {
             init();
         }
 
+        // Cleanup on page unload — delete our peer from Firestore
+        const handleBeforeUnload = () => {
+            if (myPeerIdRef.current && roomIdRef.current) {
+                // Use sendBeacon for reliable unload cleanup
+                deletePeer(roomIdRef.current, myPeerIdRef.current);
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
         return () => {
-            // Cleanup: Removed destroy() to allow quick refresh re-connects, but in prod we might want it.
-            // For Parallel, better to keep the ID alive in session.
-            // However, we MUST stop the heartbeat.
-            // if (peerInstance.current) peerInstance.current.destroy(); 
+            destroyed = true;
 
-            // Actually, let's TRY to delete our presence if we truly leave (e.g. valid close)
-            // But for refresh, we want to kep it. 
-            // The 60s timeout handles the "ghost" if we crash.
+            // Stop heartbeat
+            if (heartbeatRef.current) {
+                clearInterval(heartbeatRef.current);
+                heartbeatRef.current = null;
+            }
 
-            // Clear Listeners
+            // Unsubscribe Firestore
             unsubscribeFirestore();
+
+            // Close all data connections
+            Object.values(connections.current).forEach(entry => {
+                try { entry.conn.close(); } catch { /* ignore */ }
+            });
             connections.current = {};
-            // intervals are cleared by component unmount usually? No, need ref for interval.
-            // Since we defined heartbeat inside, we can't clear it easily without ref.
-            // Let's rely on the dependency change to re-run.
-            // Ideally we'd assign interval to a ref.
-            // For now, reload clears memory so interval dies.
+
+            // Destroy PeerJS instance
+            if (peerInstance.current) {
+                try { peerInstance.current.destroy(); } catch { /* ignore */ }
+                peerInstance.current = null;
+            }
+
+            // Delete peer from Firestore (cleanup ghost)
+            if (myPeerIdRef.current && roomIdRef.current) {
+                deletePeer(roomIdRef.current, myPeerIdRef.current);
+            }
+
+            // Remove unload listener
+            window.removeEventListener('beforeunload', handleBeforeUnload);
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [roomId, username]);
@@ -363,55 +475,61 @@ export const useP2P = (roomId, username) => {
             id: Date.now() + Math.random(),
             user: username,
             text,
-            type, // 'text' | 'sticker' | 'image' (future)
+            type,
             timestamp: Date.now()
         };
 
         const trySend = async (peerId) => {
-            // 1. Check existing connection
             let entry = connections.current[peerId];
 
-            // 2. If no entry or closed, try to reconnect ONCE
-            if (!entry || !entry.conn.open) {
-                console.log(`[P2P] Connection lost to ${peerId}. Reconnecting...`);
-                // Find peer data to get key
+            // If no entry or closed, try to reconnect ONCE
+            if (!entry || !entry.conn || !entry.conn.open) {
+                console.log(`[P2P] No open connection to ${peerId}, attempting reconnect...`);
                 const peerData = peersRef.current.find(p => p.id === peerId);
                 if (peerData) {
                     await connectToPeer(peerData);
-                    // Wait a bit for connection to open (naive wait)
-                    await new Promise(r => setTimeout(r, 1000));
+                    // Wait for connection to establish
+                    await new Promise(r => setTimeout(r, 1500));
                     entry = connections.current[peerId];
                 }
             }
 
-            if (entry && entry.conn.open && entry.sharedSecret) {
-                const encrypted = await encryptMessage(JSON.stringify(payload), entry.sharedSecret);
-                entry.conn.send({ payload: encrypted });
-                return true;
+            if (entry && entry.conn && entry.conn.open && entry.sharedSecret) {
+                try {
+                    const encrypted = await encryptMessage(JSON.stringify(payload), entry.sharedSecret);
+                    entry.conn.send({ payload: encrypted });
+                    return true;
+                } catch (err) {
+                    console.error(`[P2P] Encryption/send failed:`, err);
+                    return false;
+                }
             }
-            console.warn(`[P2P] Failed to send to ${peerId}`);
+
+            console.warn(`[P2P] Failed to send to ${peerId} — conn:${!!entry?.conn} open:${entry?.conn?.open} secret:${!!entry?.sharedSecret}`);
             return false;
         };
 
-        // If target provided, direct message
         if (targetPeerId) {
             const success = await trySend(targetPeerId);
-            if (success) {
-                addMessage({ ...payload, isMe: true, peerId: targetPeerId, status: 'sent' });
-            } else {
-                // Optional: Show error toast?
-                addMessage({ ...payload, isMe: true, peerId: targetPeerId, status: 'failed' });
-            }
-        } else {
-            // Broadcast to all peers
-            Object.values(connections.current).forEach(async (entry) => {
-                // Reuse logic? Broadcasters usually just fire and forget.
-                // For now, keep simple broadcast but maybe improve later.
-                if (entry.conn.open && entry.sharedSecret) {
-                    const encrypted = await encryptMessage(JSON.stringify(payload), entry.sharedSecret);
-                    entry.conn.send({ payload: encrypted });
-                }
+            addMessage({
+                ...payload,
+                isMe: true,
+                peerId: targetPeerId,
+                status: success ? 'sent' : 'failed'
             });
+        } else {
+            // Broadcast
+            const entries = Object.entries(connections.current);
+            for (const [peerId, entry] of entries) {
+                if (entry.conn && entry.conn.open && entry.sharedSecret) {
+                    try {
+                        const encrypted = await encryptMessage(JSON.stringify(payload), entry.sharedSecret);
+                        entry.conn.send({ payload: encrypted });
+                    } catch (err) {
+                        console.error(`[P2P] Broadcast send failed to ${peerId}:`, err);
+                    }
+                }
+            }
             addMessage({ ...payload, isMe: true, peerId: 'broadcast', status: 'sent' });
         }
     };
@@ -419,15 +537,16 @@ export const useP2P = (roomId, username) => {
     // Send typing signal
     const sendTyping = (targetPeerId) => {
         const entry = connections.current[targetPeerId];
-        if (entry && entry.conn.open) {
-            entry.conn.send({ type: 'typing' });
+        if (entry && entry.conn && entry.conn.open) {
+            try {
+                entry.conn.send({ type: 'typing' });
+            } catch { /* ignore */ }
         }
     };
 
-    // Panic Wipe: Instantly purge all messages from RAM and reset state
+    // Panic Wipe
     const panicWipe = () => {
         setMessages([]);
-        // Vibrate for feedback if supported
         if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
     };
 

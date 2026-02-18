@@ -444,11 +444,13 @@ const ConversationView = ({ chat, onBack, messages, onSendMessage, onVideoCall, 
                                     </div>
                                 )}
 
-                                {/* Delivery Status Ticks (Only for text for now, or subtle for stickers) */}
+                                {/* Delivery Status Ticks */}
                                 {isMe && (
                                     <div className={`flex justify-end mt-0.5 pr-1 ${msg.type === 'sticker' ? 'opacity-50' : ''}`}>
                                         {msg.status === 'delivered' ? (
                                             <CheckCheck size={14} className="text-blue-400" />
+                                        ) : msg.status === 'failed' ? (
+                                            <span className="text-[10px] text-red-400 font-medium">Failed</span>
                                         ) : (
                                             <Check size={14} className="text-gray-500" />
                                         )}
