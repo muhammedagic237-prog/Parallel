@@ -92,7 +92,7 @@ const PrivateChat = ({ onLock }) => {
     }
 
     return (
-        <div className="bg-black text-white h-[100dvh] w-full flex flex-col font-sans overflow-hidden relative">
+        <div className="text-white h-[100dvh] w-full flex flex-col font-sans overflow-hidden relative" style={{ background: 'linear-gradient(145deg, #0a0e1a 0%, #0d1117 30%, #0a0f1e 60%, #050a14 100%)' }}>
             {/* Security Watermark (Visual Deterrent) */}
             <div className="absolute inset-0 pointer-events-none z-0 opacity-[0.03] overflow-hidden flex flex-wrap content-center justify-center select-none">
                 {Array.from({ length: 12 }).map((_, i) => (
@@ -166,10 +166,10 @@ const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, r
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="flex flex-col h-full bg-black"
+        className="flex flex-col h-full" style={{ background: 'linear-gradient(145deg, #0a0e1a 0%, #0d1117 30%, #0a0f1e 60%, #050a14 100%)' }}
     >
-        {/* Header */}
-        <header className="px-4 py-3 flex justify-between items-center sticky top-0 z-10 bg-black">
+        {/* Header — Frosted Glass */}
+        <header className="px-4 py-3 flex justify-between items-center sticky top-0 z-10" style={{ background: 'rgba(10, 14, 26, 0.7)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
             <div className="flex items-center gap-3">
                 <button onClick={onLock} className="text-white">
                     <ArrowLeft size={24} strokeWidth={2} />
@@ -228,7 +228,7 @@ const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, r
                 <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
                     <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
-                <input type="text" placeholder="Search" className="w-full bg-[#262626] text-white py-2 pl-10 pr-4 rounded-xl text-sm outline-none placeholder-gray-500" />
+                <input type="text" placeholder="Search" className="w-full text-white py-2 pl-10 pr-4 rounded-xl text-sm outline-none placeholder-gray-400" style={{ background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.08)' }} />
             </div>
         </div>
 
@@ -395,10 +395,10 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-0 bg-black flex flex-col z-20"
+            className="fixed inset-0 flex flex-col z-20" style={{ background: 'linear-gradient(145deg, #0a0e1a 0%, #0d1117 30%, #0a0f1e 60%, #050a14 100%)' }}
         >
-            {/* Header */}
-            <header className="px-3 py-2 flex items-center justify-between bg-black border-b border-[#262626]">
+            {/* Header — Frosted Glass */}
+            <header className="px-3 py-2 flex items-center justify-between" style={{ background: 'rgba(10, 14, 26, 0.65)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', borderBottom: '1px solid rgba(120, 180, 255, 0.08)' }}>
                 <div className="flex items-center gap-3">
                     <button onClick={onBack} className="text-white active:opacity-50 transition-opacity"><ArrowLeft size={26} strokeWidth={1.5} /></button>
                     <div className="flex items-center gap-3">
@@ -439,21 +439,21 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
             <div className="flex-1 overflow-y-auto px-4 pt-4 pb-2" onClick={() => setReactionMsg(null)}>
                 {/* E2E Banner (like Instagram) */}
                 <div className="flex flex-col items-center mb-6 mt-2">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 p-[2px] mb-3">
-                        <div className="w-full h-full rounded-full bg-black flex items-center justify-center">
-                            <div className="w-full h-full rounded-full bg-gray-700 flex items-center justify-center text-2xl font-bold text-white uppercase">
+                    <div className="w-20 h-20 rounded-full p-[2px] mb-3" style={{ background: 'linear-gradient(135deg, #60a5fa, #a78bfa, #818cf8, #38bdf8)' }}>
+                        <div className="w-full h-full rounded-full flex items-center justify-center" style={{ background: 'rgba(10, 14, 26, 0.85)' }}>
+                            <div className="w-full h-full rounded-full flex items-center justify-center text-2xl font-bold text-white uppercase" style={{ background: 'rgba(100, 160, 255, 0.12)' }}>
                                 {(chat.name || '?')[0]}
                             </div>
                         </div>
                     </div>
                     <h3 className="text-white font-bold text-lg">{chat.name}</h3>
-                    <p className="text-gray-500 text-xs mt-1">Parallel • Encrypted P2P</p>
-                    <div className="bg-[#262626] rounded-full px-3 py-1.5 mt-3 flex items-center gap-1.5">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
+                    <p className="text-xs mt-1" style={{ color: 'rgba(140, 180, 255, 0.5)' }}>Parallel • Encrypted P2P</p>
+                    <div className="rounded-full px-3 py-1.5 mt-3 flex items-center gap-1.5" style={{ background: 'rgba(100, 160, 255, 0.08)', border: '1px solid rgba(100, 160, 255, 0.12)', backdropFilter: 'blur(10px)' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'rgba(140, 180, 255, 0.5)' }}>
                             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                         </svg>
-                        <span className="text-[11px] text-gray-400">End-to-end encrypted</span>
+                        <span className="text-[11px]" style={{ color: 'rgba(140, 180, 255, 0.5)' }}>End-to-end encrypted</span>
                     </div>
                 </div>
 
@@ -521,7 +521,7 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
                                                 exit={{ opacity: 0, scale: 0.5 }}
                                                 className="absolute -top-12 left-1/2 -translate-x-1/2 z-30"
                                             >
-                                                <div className="bg-[#333] rounded-full px-2 py-1.5 flex gap-1 shadow-2xl border border-gray-700">
+                                                <div className="rounded-full px-2 py-1.5 flex gap-1 shadow-2xl" style={{ background: 'rgba(40, 50, 80, 0.8)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(120, 180, 255, 0.15)' }}>
                                                     {REACTIONS.map(r => (
                                                         <button key={r} className="text-xl hover:scale-125 transition-transform px-0.5 active:scale-90" onClick={(e) => { e.stopPropagation(); setReactionMsg(null); }}>
                                                             {r}
@@ -544,11 +544,12 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
                                         <div
                                             onDoubleClick={() => setReactionMsg(msg.id)}
                                             className={`
-                                                px-3.5 py-2 text-[15px] leading-[20px] break-words cursor-pointer select-none
-                                                ${isMe
-                                                    ? `bg-[#3797F0] text-white ${bubbleRounding}`
-                                                    : `bg-[#262626] text-white ${bubbleRounding}`}
+                                                px-3.5 py-2 text-[15px] leading-[20px] break-words cursor-pointer select-none ${bubbleRounding}
                                             `}
+                                            style={isMe
+                                                ? { background: 'linear-gradient(135deg, rgba(56, 140, 255, 0.75), rgba(90, 120, 255, 0.65))', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(120, 180, 255, 0.2)', color: 'white' }
+                                                : { background: 'rgba(255, 255, 255, 0.06)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.08)', color: 'rgba(230, 240, 255, 0.95)' }
+                                            }
                                         >
                                             {msg.text}
                                         </div>
@@ -580,7 +581,7 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
                         <div className="w-7 h-7 rounded-full bg-gray-700 mr-2 flex-shrink-0 self-end flex items-center justify-center">
                             <span className="text-[10px] font-bold text-white uppercase">{(chat.name || '?')[0]}</span>
                         </div>
-                        <div className="bg-[#262626] rounded-[22px] rounded-bl-md px-4 py-3">
+                        <div className="rounded-[22px] rounded-bl-md px-4 py-3" style={{ background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.08)' }}>
                             <div className="flex gap-1">
                                 <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
                                 <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
@@ -593,12 +594,12 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
             </div>
 
             {/* Footer / Input Bar — Instagram-style */}
-            <form onSubmit={handleSend} className="px-3 py-2 bg-black flex items-center gap-2 border-t border-[#262626]">
-                <button type="button" className="h-11 w-11 flex items-center justify-center rounded-full bg-[#3797F0] text-white flex-shrink-0 active:scale-90 transition-transform">
+            <form onSubmit={handleSend} className="px-3 py-2 flex items-center gap-2" style={{ background: 'rgba(10, 14, 26, 0.65)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', borderTop: '1px solid rgba(120, 180, 255, 0.08)' }}>
+                <button type="button" className="h-11 w-11 flex items-center justify-center rounded-full text-white flex-shrink-0 active:scale-90 transition-transform" style={{ background: 'linear-gradient(135deg, rgba(56, 140, 255, 0.7), rgba(90, 120, 255, 0.6))' }}>
                     <Camera size={22} />
                 </button>
 
-                <div className="flex-1 bg-[#262626] rounded-full h-11 flex items-center px-4 gap-2 border border-[#363636]">
+                <div className="flex-1 rounded-full h-11 flex items-center px-4 gap-2" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(10px)' }}>
                     <input
                         value={input}
                         onChange={handleInputChange}
