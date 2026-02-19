@@ -45,13 +45,16 @@ function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="absolute inset-0 z-50 bg-black/80 backdrop-blur-3xl flex items-center justify-center pointer-events-none"
+              transition={{ duration: 0.15 }}
+              className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
+              style={{ background: 'rgba(6, 10, 20, 0.88)', backdropFilter: 'blur(40px) saturate(180%)', WebkitBackdropFilter: 'blur(40px) saturate(180%)' }}
             >
-              <div className="text-white text-center">
-                <div className="text-6xl mb-6">🔒</div>
-                <h2 className="text-2xl font-bold tracking-widest uppercase">Parallel Protected</h2>
-                <p className="text-sm text-gray-400 mt-2">Content Hidden for Privacy</p>
+              <div className="text-center">
+                <div className="w-20 h-20 rounded-3xl mx-auto mb-6 flex items-center justify-center" style={{ background: 'rgba(100, 160, 255, 0.08)', border: '1px solid rgba(120, 180, 255, 0.1)' }}>
+                  <span className="text-4xl">🔒</span>
+                </div>
+                <h2 className="text-2xl font-bold tracking-widest uppercase text-white">Parallel Protected</h2>
+                <p className="text-sm mt-2" style={{ color: 'rgba(140, 180, 255, 0.4)' }}>Content Hidden for Privacy</p>
               </div>
             </motion.div>
           )}

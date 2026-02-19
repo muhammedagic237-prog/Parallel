@@ -42,11 +42,14 @@ const PaymentModal = ({ onClose, onSuccess }) => {
     return (
         <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+            style={{ background: 'rgba(6, 10, 20, 0.85)', backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)' }}
         >
             <motion.div
                 initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
-                className="w-full max-w-md bg-gray-900 rounded-3xl border border-gray-800 shadow-2xl overflow-hidden"
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="w-full max-w-md rounded-3xl shadow-2xl overflow-hidden"
+                style={{ background: 'rgba(12, 16, 30, 0.9)', border: '1px solid rgba(120, 180, 255, 0.1)', backdropFilter: 'blur(20px)' }}
             >
                 <div className="p-6">
                     <div className="flex justify-between items-center mb-6">
@@ -54,7 +57,7 @@ const PaymentModal = ({ onClose, onSuccess }) => {
                             <Lock size={20} className="text-green-500" />
                             Secure Checkout
                         </h3>
-                        <button onClick={onClose} className="p-2 hover:bg-gray-800 rounded-full text-gray-400">
+                        <button onClick={onClose} className="p-2 rounded-full text-gray-400 hover:text-white transition-colors" style={{ background: 'rgba(255,255,255,0.06)' }}>
                             <X size={20} />
                         </button>
                     </div>
@@ -67,7 +70,7 @@ const PaymentModal = ({ onClose, onSuccess }) => {
                                 onSubmit={handlePay}
                                 className="space-y-4"
                             >
-                                <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 rounded-xl border border-gray-700 mb-6 relative overflow-hidden">
+                                <div className="p-4 rounded-xl mb-6 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(30, 50, 100, 0.3), rgba(20, 30, 60, 0.5))', border: '1px solid rgba(120, 180, 255, 0.1)' }}>
                                     <div className="absolute top-0 right-0 p-4 opacity-10">
                                         <CreditCard size={120} />
                                     </div>
@@ -98,9 +101,9 @@ const PaymentModal = ({ onClose, onSuccess }) => {
                                                 type="text"
                                                 value={cardNumber}
                                                 onChange={handleCardChange}
-                                                maxLength={19}
+                                                className="w-full rounded-xl py-2.5 pl-10 pr-4 text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all font-mono"
+                                                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(120, 180, 255, 0.1)', color: 'white' }}
                                                 placeholder="0000 0000 0000 0000"
-                                                className="w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 pl-10 pr-4 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-600 font-mono"
                                                 required
                                             />
                                         </div>
@@ -114,7 +117,8 @@ const PaymentModal = ({ onClose, onSuccess }) => {
                                                 onChange={(e) => setExpiry(e.target.value.replace(/[^0-9/]/g, '').slice(0, 5))}
                                                 placeholder="MM/YY"
                                                 maxLength={5}
-                                                className="w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 px-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder-gray-600 text-center font-mono"
+                                                className="w-full rounded-xl py-2.5 px-4 text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all text-center font-mono"
+                                                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(120, 180, 255, 0.1)' }}
                                                 required
                                             />
                                         </div>
@@ -126,7 +130,8 @@ const PaymentModal = ({ onClose, onSuccess }) => {
                                                 onChange={(e) => setCvc(e.target.value.replace(/[^0-9]/g, '').slice(0, 3))}
                                                 placeholder="123"
                                                 maxLength={3}
-                                                className="w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 px-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder-gray-600 text-center font-mono"
+                                                className="w-full rounded-xl py-2.5 px-4 text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all text-center font-mono"
+                                                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(120, 180, 255, 0.1)' }}
                                                 required
                                             />
                                         </div>
@@ -135,7 +140,8 @@ const PaymentModal = ({ onClose, onSuccess }) => {
 
                                 <button
                                     type="submit"
-                                    className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all mt-4 flex items-center justify-center gap-2"
+                                    className="w-full text-white font-bold py-3.5 rounded-xl active:scale-95 transition-all mt-4 flex items-center justify-center gap-2"
+                                    style={{ background: 'linear-gradient(135deg, rgba(56, 140, 255, 0.7), rgba(100, 80, 255, 0.6))', border: '1px solid rgba(120, 180, 255, 0.2)', boxShadow: '0 8px 32px rgba(56, 140, 255, 0.15)' }}
                                 >
                                     Pay $4.99
                                 </button>

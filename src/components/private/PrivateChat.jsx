@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
-import { ArrowLeft, Camera, Phone, Video, Send, Plus, PhoneOff, MicOff, VideoOff, Clock, Check, CheckCheck, Zap, Smile } from 'lucide-react';
+import { ArrowLeft, Camera, Phone, Video, Send, Plus, PhoneOff, Mic, MicOff, VideoOff, Clock, Check, CheckCheck, Zap, Smile } from 'lucide-react';
 import { useP2P } from '../../hooks/useP2P';
 import { usePremium } from '../../context/PremiumContext';
 import PremiumStore from '../premium/PremiumStore';
@@ -246,9 +246,9 @@ const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, r
 
             {peers.map(peer => (
                 <div key={peer.id} className="inline-flex flex-col items-center mr-4" onClick={() => onSelectChat(peer)}>
-                    <div className="w-16 h-16 rounded-full p-[2px] bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600">
-                        <div className="w-full h-full rounded-full bg-black p-[2px]">
-                            <div className="w-full h-full rounded-full bg-gray-700 flex items-center justify-center text-lg font-semibold cursor-pointer">
+                    <div className="w-16 h-16 rounded-full p-[2px]" style={{ background: 'linear-gradient(135deg, #60a5fa, #a78bfa, #818cf8, #38bdf8)' }}>
+                        <div className="w-full h-full rounded-full p-[2px]" style={{ background: '#0a0e1a' }}>
+                            <div className="w-full h-full rounded-full flex items-center justify-center text-lg font-semibold cursor-pointer" style={{ background: 'rgba(100, 160, 255, 0.1)' }}>
                                 {(peer.user || '?')[0].toUpperCase()}
                             </div>
                         </div>
@@ -276,11 +276,14 @@ const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, r
                 <button
                     key={peer.id}
                     onClick={() => onSelectChat({ id: peer.id, name: peer.user })}
-                    className="w-full px-4 py-3 flex items-center gap-3 active:bg-[#121212] transition-colors"
+                    className="w-full px-4 py-3 flex items-center gap-3 transition-colors"
+                    style={{ background: 'transparent' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                 >
-                    <div className="w-14 h-14 rounded-full bg-gray-700 flex items-center justify-center font-bold text-lg text-white relative">
+                    <div className="w-14 h-14 rounded-full flex items-center justify-center font-bold text-lg text-white relative" style={{ background: 'rgba(100, 160, 255, 0.1)', border: '1px solid rgba(120, 180, 255, 0.08)' }}>
                         {(peer.user || '?')[0].toUpperCase()}
-                        <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-black"></div>
+                        <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2" style={{ borderColor: '#0a0e1a' }}></div>
                     </div>
                     <div className="flex-1 text-left">
                         <h3 className="text-sm font-normal text-white">{peer.user}</h3>
@@ -402,9 +405,9 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
                 <div className="flex items-center gap-3">
                     <button onClick={onBack} className="text-white active:opacity-50 transition-opacity"><ArrowLeft size={26} strokeWidth={1.5} /></button>
                     <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 p-[1.5px]">
-                            <div className="w-full h-full rounded-full bg-black flex items-center justify-center">
-                                <div className="w-full h-full rounded-full bg-gray-700 flex items-center justify-center text-sm font-bold text-white uppercase">
+                        <div className="w-9 h-9 rounded-full p-[1.5px]" style={{ background: 'linear-gradient(135deg, #60a5fa, #a78bfa, #818cf8, #38bdf8)' }}>
+                            <div className="w-full h-full rounded-full flex items-center justify-center" style={{ background: '#0a0e1a' }}>
+                                <div className="w-full h-full rounded-full flex items-center justify-center text-sm font-bold text-white uppercase" style={{ background: 'rgba(100, 160, 255, 0.12)' }}>
                                     {(chat.name || '?')[0]}
                                 </div>
                             </div>
@@ -498,8 +501,8 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
                                 {!isMe && (
                                     <div className="w-7 h-7 mr-2 flex-shrink-0 self-end">
                                         {showAvatar ? (
-                                            <div className="w-full h-full rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 p-[1px]">
-                                                <div className="w-full h-full rounded-full bg-black flex items-center justify-center">
+                                            <div className="w-full h-full rounded-full p-[1px]" style={{ background: 'linear-gradient(135deg, #60a5fa, #818cf8, #38bdf8)' }}>
+                                                <div className="w-full h-full rounded-full flex items-center justify-center" style={{ background: '#0a0e1a' }}>
                                                     <span className="text-[10px] font-bold text-white uppercase select-none">
                                                         {(msg.user || '?')[0]}
                                                     </span>
@@ -660,18 +663,20 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
 const IncomingCallModal = ({ onAnswer, onReject }) => (
     <motion.div
         initial={{ y: -100, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-        className="fixed top-4 left-4 right-4 bg-gray-900 rounded-2xl p-4 shadow-2xl border border-gray-800 z-50 flex items-center justify-between"
+        transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+        className="fixed top-4 left-4 right-4 rounded-2xl p-4 shadow-2xl z-50 flex items-center justify-between"
+        style={{ background: 'rgba(10, 14, 26, 0.8)', backdropFilter: 'blur(30px) saturate(180%)', WebkitBackdropFilter: 'blur(30px) saturate(180%)', border: '1px solid rgba(120, 180, 255, 0.12)' }}
     >
         <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-gray-700 animate-pulse" />
+            <div className="w-12 h-12 rounded-full animate-pulse" style={{ background: 'rgba(100, 160, 255, 0.15)' }} />
             <div>
                 <h3 className="text-white font-bold">Incoming Video Call...</h3>
-                <span className="text-xs text-gray-400">Encrypted P2P Connection</span>
+                <span className="text-xs" style={{ color: 'rgba(140, 180, 255, 0.5)' }}>Encrypted P2P Connection</span>
             </div>
         </div>
         <div className="flex gap-3">
-            <button onClick={onReject} className="p-3 bg-red-500 rounded-full text-white"><PhoneOff size={20} /></button>
-            <button onClick={onAnswer} className="p-3 bg-green-500 rounded-full text-white"><Video size={20} /></button>
+            <button onClick={onReject} className="p-3 rounded-full text-white active:scale-90 transition-transform" style={{ background: 'rgba(239, 68, 68, 0.8)' }}><PhoneOff size={20} /></button>
+            <button onClick={onAnswer} className="p-3 rounded-full text-white active:scale-90 transition-transform" style={{ background: 'rgba(34, 197, 94, 0.8)' }}><Video size={20} /></button>
         </div>
     </motion.div>
 );
@@ -706,9 +711,9 @@ const VideoCallOverlay = ({ call, remoteStream, onEnd }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black z-50 flex flex-col">
+        <div className="fixed inset-0 z-50 flex flex-col" style={{ background: '#050a14' }}>
             {/* Remote Video (Full Screen) */}
-            <div className="flex-1 relative bg-gray-900">
+            <div className="flex-1 relative" style={{ background: 'rgba(10, 14, 26, 0.9)' }}>
                 {remoteStream ? (
                     <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
                 ) : (
@@ -716,20 +721,20 @@ const VideoCallOverlay = ({ call, remoteStream, onEnd }) => {
                 )}
 
                 {/* Local Video (PiP) */}
-                <div className="absolute top-4 right-4 w-32 h-48 bg-gray-800 rounded-xl overflow-hidden border-2 border-white/20 shadow-lg">
+                <div className="absolute top-4 right-4 w-32 h-48 rounded-xl overflow-hidden shadow-lg" style={{ background: 'rgba(10, 14, 26, 0.5)', border: '2px solid rgba(120, 180, 255, 0.15)' }}>
                     <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
                 </div>
             </div>
 
             {/* Controls */}
-            <div className="h-24 bg-black/80 backdrop-blur-md flex items-center justify-center gap-8 pb-4">
-                <button onClick={toggleMute} className={`p-4 rounded-full ${muted ? 'bg-white text-black' : 'bg-gray-800 text-white'}`}>
+            <div className="h-24 flex items-center justify-center gap-8 pb-4" style={{ background: 'rgba(10, 14, 26, 0.65)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', borderTop: '1px solid rgba(120, 180, 255, 0.08)' }}>
+                <button onClick={toggleMute} className="p-4 rounded-full transition-all active:scale-90" style={muted ? { background: 'rgba(255,255,255,0.9)', color: 'black' } : { background: 'rgba(255,255,255,0.08)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}>
                     {muted ? <MicOff /> : <Mic />}
                 </button>
-                <button onClick={onEnd} className="p-4 rounded-full bg-red-600 text-white shadow-lg scale-110">
+                <button onClick={onEnd} className="p-4 rounded-full text-white shadow-lg scale-110 active:scale-95 transition-transform" style={{ background: 'rgba(220, 38, 38, 0.85)', boxShadow: '0 4px 20px rgba(220, 38, 38, 0.3)' }}>
                     <PhoneOff size={32} />
                 </button>
-                <button onClick={toggleCamera} className={`p-4 rounded-full ${cameraOff ? 'bg-white text-black' : 'bg-gray-800 text-white'}`}>
+                <button onClick={toggleCamera} className="p-4 rounded-full transition-all active:scale-90" style={cameraOff ? { background: 'rgba(255,255,255,0.9)', color: 'black' } : { background: 'rgba(255,255,255,0.08)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}>
                     {cameraOff ? <VideoOff /> : <Video />}
                 </button>
             </div>
