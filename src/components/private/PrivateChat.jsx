@@ -357,9 +357,17 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
             onOpenStore();
             return;
         }
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-            onVideoCall(stream);
-        }).catch(() => alert("Camera access required for video calls."));
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert("Video calls require HTTPS and camera permissions.");
+            return;
+        }
+        try {
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+                onVideoCall(stream);
+            }).catch(() => alert("Camera access required for video calls."));
+        } catch (err) {
+            alert("Video calls are not supported on this device/browser.");
+        }
     }, [isPremium, onOpenStore, onVideoCall]);
 
     const handleSend = useCallback((e) => {
