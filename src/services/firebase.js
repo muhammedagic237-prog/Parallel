@@ -30,7 +30,7 @@ export const updateHeartbeat = async (roomId, peerId) => {
         await updateDoc(roomRef, {
             lastSeen: serverTimestamp()
         });
-    } catch (e) {
+    } catch {
         // Ignore if doc was deleted
     }
 };
@@ -39,7 +39,7 @@ export const deletePeer = async (roomId, peerId) => {
     try {
         const roomRef = doc(db, 'parallel_rooms', roomId, 'peers', peerId);
         await deleteDoc(roomRef);
-    } catch (e) {
+    } catch {
         // Ignore
     }
 };

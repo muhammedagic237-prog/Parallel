@@ -12,10 +12,9 @@ const DummyDashboard = ({ onLock }) => {
     ]);
     const [loading, setLoading] = useState(false);
     const [balanceHidden, setBalanceHidden] = useState(false);
-    const [activeTab, setActiveTab] = useState('portfolio'); // portfolio | activity
+    const [activeTab, setActiveTab] = useState('portfolio');
     const [lastUpdated, setLastUpdated] = useState(null);
 
-    // Fake transaction history
     const transactions = [
         { type: 'receive', asset: 'BTC', amount: '+0.005', from: '0x8a2f...3b1e', time: '2h ago', usdValue: '+$482.00' },
         { type: 'send', asset: 'ETH', amount: '-0.12', to: '0x4c7d...9f2a', time: '5h ago', usdValue: '-$330.00' },
@@ -26,7 +25,6 @@ const DummyDashboard = ({ onLock }) => {
         { type: 'receive', asset: 'SOL', amount: '+1.5', from: 'Phantom', time: '5d ago', usdValue: '+$168.00' },
     ];
 
-    // Fetch Live Prices (CoinGecko)
     const fetchPrices = useCallback(async () => {
         setLoading(true);
         try {
@@ -59,7 +57,7 @@ const DummyDashboard = ({ onLock }) => {
 
     useEffect(() => {
         fetchPrices();
-        const interval = setInterval(fetchPrices, 30000); // Every 30s for real-time feel
+        const interval = setInterval(fetchPrices, 30000);
         return () => clearInterval(interval);
     }, [fetchPrices]);
 
@@ -70,7 +68,6 @@ const DummyDashboard = ({ onLock }) => {
     }, 0);
     const percentChange = totalBalance > 0 ? (totalChange / (totalBalance - totalChange)) * 100 : 0;
 
-    // SVG Chart path
     const chartPath = (history, w, h) => {
         const min = Math.min(...history);
         const max = Math.max(...history);
@@ -90,23 +87,23 @@ const DummyDashboard = ({ onLock }) => {
     };
 
     return (
-        <div className="bg-black text-white h-[100dvh] flex flex-col font-sans overflow-hidden">
+        <div className="h-[100dvh] flex flex-col font-sans overflow-hidden">
             {/* Header */}
-            <div className="px-5 pt-8 pb-6 bg-gradient-to-b from-[#0a0a0a] to-black relative z-10">
+            <div className="px-5 pt-8 pb-6 relative z-10" style={{ background: 'rgba(255, 255, 255, 0.3)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)' }}>
                 {/* Top row */}
                 <div className="flex justify-between items-center mb-6">
-                    <button onClick={onLock} className="p-2.5 bg-[#1a1a1a] rounded-xl active:scale-95 transition-transform border border-[#2a2a2a]">
-                        <ArrowLeft size={18} />
+                    <button onClick={onLock} className="p-2.5 rounded-xl active:scale-95 transition-transform" style={{ background: 'rgba(255, 255, 255, 0.5)', border: '1px solid rgba(255, 255, 255, 0.7)' }}>
+                        <ArrowLeft size={18} style={{ color: 'rgba(0, 0, 0, 0.7)' }} />
                     </button>
                     <div className="flex gap-2">
-                        <button className="p-2.5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a] relative">
+                        <button className="p-2.5 rounded-xl relative" style={{ background: 'rgba(255, 255, 255, 0.5)', border: '1px solid rgba(255, 255, 255, 0.7)', color: 'rgba(0, 0, 0, 0.6)' }}>
                             <Bell size={18} />
                             <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
                         </button>
-                        <button className="p-2.5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
+                        <button className="p-2.5 rounded-xl" style={{ background: 'rgba(255, 255, 255, 0.5)', border: '1px solid rgba(255, 255, 255, 0.7)', color: 'rgba(0, 0, 0, 0.6)' }}>
                             <QrCode size={18} />
                         </button>
-                        <button className="p-2.5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
+                        <button className="p-2.5 rounded-xl" style={{ background: 'rgba(255, 255, 255, 0.5)', border: '1px solid rgba(255, 255, 255, 0.7)', color: 'rgba(0, 0, 0, 0.6)' }}>
                             <Settings size={18} />
                         </button>
                     </div>
@@ -115,20 +112,20 @@ const DummyDashboard = ({ onLock }) => {
                 {/* Balance */}
                 <div className="flex flex-col items-center mb-5">
                     <div className="flex items-center gap-2 mb-1">
-                        <span className="text-gray-500 text-xs font-semibold tracking-[0.15em] uppercase">Total Balance</span>
-                        <button onClick={() => setBalanceHidden(!balanceHidden)} className="text-gray-500 active:text-white">
+                        <span className="text-xs font-semibold tracking-[0.15em] uppercase" style={{ color: 'rgba(0, 0, 0, 0.4)' }}>Total Balance</span>
+                        <button onClick={() => setBalanceHidden(!balanceHidden)} className="active:opacity-60" style={{ color: 'rgba(0, 0, 0, 0.35)' }}>
                             {balanceHidden ? <EyeOff size={14} /> : <Eye size={14} />}
                         </button>
                     </div>
-                    <h1 className="text-[38px] font-black tracking-tight leading-none">
+                    <h1 className="text-[38px] font-black tracking-tight leading-none" style={{ color: 'rgba(0, 0, 0, 0.85)' }}>
                         {balanceHidden ? '••••••' : `$${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                     </h1>
-                    <div className={`flex items-center gap-1 mt-2 px-3 py-1 rounded-full text-xs font-bold ${totalChange >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                    <div className={`flex items-center gap-1 mt-2 px-3 py-1 rounded-full text-xs font-bold ${totalChange >= 0 ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
                         {totalChange >= 0 ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
                         <span>{totalChange >= 0 ? '+' : ''}${Math.abs(totalChange).toFixed(2)} ({percentChange >= 0 ? '+' : ''}{percentChange.toFixed(1)}%)</span>
                     </div>
                     {lastUpdated && (
-                        <span className="text-gray-600 text-[10px] mt-2 flex items-center gap-1">
+                        <span className="text-[10px] mt-2 flex items-center gap-1" style={{ color: 'rgba(0, 0, 0, 0.3)' }}>
                             <Clock size={10} />
                             Updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                         </span>
@@ -146,20 +143,22 @@ const DummyDashboard = ({ onLock }) => {
             </div>
 
             {/* Tab Switcher */}
-            <div className="flex px-5 pt-4 pb-2 gap-4 border-b border-[#1a1a1a]">
+            <div className="flex px-5 pt-4 pb-2 gap-4" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.3)' }}>
                 <button
                     onClick={() => setActiveTab('portfolio')}
-                    className={`pb-2 text-sm font-semibold transition-colors relative ${activeTab === 'portfolio' ? 'text-white' : 'text-gray-500'}`}
+                    className={`pb-2 text-sm font-semibold transition-colors relative`}
+                    style={{ color: activeTab === 'portfolio' ? 'rgba(0, 0, 0, 0.85)' : 'rgba(0, 0, 0, 0.35)' }}
                 >
                     Portfolio
-                    {activeTab === 'portfolio' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#3797F0] rounded-full" />}
+                    {activeTab === 'portfolio' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 rounded-full" />}
                 </button>
                 <button
                     onClick={() => setActiveTab('activity')}
-                    className={`pb-2 text-sm font-semibold transition-colors relative ${activeTab === 'activity' ? 'text-white' : 'text-gray-500'}`}
+                    className={`pb-2 text-sm font-semibold transition-colors relative`}
+                    style={{ color: activeTab === 'activity' ? 'rgba(0, 0, 0, 0.85)' : 'rgba(0, 0, 0, 0.35)' }}
                 >
                     Activity
-                    {activeTab === 'activity' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#3797F0] rounded-full" />}
+                    {activeTab === 'activity' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 rounded-full" />}
                 </button>
             </div>
 
@@ -170,51 +169,51 @@ const DummyDashboard = ({ onLock }) => {
                         {assets.map(asset => {
                             const value = asset.price * asset.balance;
                             return (
-                                <div key={asset.id} className="bg-[#111] p-4 rounded-2xl flex items-center justify-between active:bg-[#181818] transition-all border border-[#1c1c1c]">
+                                <div key={asset.id} className="p-4 rounded-2xl flex items-center justify-between transition-all" style={{ background: 'rgba(255, 255, 255, 0.4)', border: '1px solid rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(20px)' }}>
                                     <div className="flex items-center gap-3">
                                         <div
                                             className="w-11 h-11 rounded-full flex items-center justify-center text-lg font-black"
-                                            style={{ backgroundColor: asset.color + '22', color: asset.color, border: `1.5px solid ${asset.color}44` }}
+                                            style={{ backgroundColor: asset.color + '18', color: asset.color, border: `1.5px solid ${asset.color}33` }}
                                         >
                                             {getCryptoIcon(asset.symbol)}
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-[15px] leading-tight">{asset.name}</h4>
-                                            <span className="text-[11px] text-gray-500">{asset.balance} {asset.symbol}</span>
+                                            <h4 className="font-bold text-[15px] leading-tight" style={{ color: 'rgba(0, 0, 0, 0.85)' }}>{asset.name}</h4>
+                                            <span className="text-[11px]" style={{ color: 'rgba(0, 0, 0, 0.4)' }}>{asset.balance} {asset.symbol}</span>
                                         </div>
                                     </div>
 
                                     {/* Sparkline */}
                                     <div className="w-16 h-8 mx-2">
                                         <svg width="64" height="32" viewBox="0 0 100 50" preserveAspectRatio="none">
-                                            <path d={chartPath(asset.history, 100, 50)} fill="none" stroke={asset.change >= 0 ? '#4ade80' : '#ef4444'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                            <path d={chartPath(asset.history, 100, 50)} fill="none" stroke={asset.change >= 0 ? '#16a34a' : '#dc2626'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                                         </svg>
                                     </div>
 
                                     <div className="text-right min-w-[80px]">
-                                        <h4 className="font-bold text-[14px]">{balanceHidden ? '•••' : `$${value.toFixed(2)}`}</h4>
-                                        <div className={`text-[11px] font-semibold flex items-center justify-end gap-0.5 ${asset.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                        <h4 className="font-bold text-[14px]" style={{ color: 'rgba(0, 0, 0, 0.85)' }}>{balanceHidden ? '•••' : `$${value.toFixed(2)}`}</h4>
+                                        <div className={`text-[11px] font-semibold flex items-center justify-end gap-0.5 ${asset.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                             {asset.change >= 0 ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
                                             {asset.change >= 0 ? '+' : ''}{asset.change.toFixed(2)}%
                                         </div>
-                                        <span className="text-gray-600 text-[10px]">{formatPrice(asset.price)}</span>
+                                        <span className="text-[10px]" style={{ color: 'rgba(0, 0, 0, 0.3)' }}>{formatPrice(asset.price)}</span>
                                     </div>
                                 </div>
                             );
                         })}
 
-                        {/* Market Movers - Bottom */}
+                        {/* Trending */}
                         <div className="mt-4 px-1">
-                            <h3 className="text-sm font-bold text-gray-400 mb-3 flex items-center gap-1"><TrendingUp size={14} /> Trending</h3>
+                            <h3 className="text-sm font-bold mb-3 flex items-center gap-1" style={{ color: 'rgba(0, 0, 0, 0.5)' }}><TrendingUp size={14} /> Trending</h3>
                             <div className="flex gap-2 overflow-x-auto pb-2">
                                 {[
-                                    { name: 'PEPE', change: '+12.4%', color: '#4ade80' },
-                                    { name: 'WIF', change: '+8.7%', color: '#4ade80' },
-                                    { name: 'BONK', change: '-3.2%', color: '#ef4444' },
-                                    { name: 'JUP', change: '+6.1%', color: '#4ade80' },
+                                    { name: 'PEPE', change: '+12.4%', color: '#16a34a' },
+                                    { name: 'WIF', change: '+8.7%', color: '#16a34a' },
+                                    { name: 'BONK', change: '-3.2%', color: '#dc2626' },
+                                    { name: 'JUP', change: '+6.1%', color: '#16a34a' },
                                 ].map(t => (
-                                    <div key={t.name} className="bg-[#111] border border-[#1c1c1c] rounded-xl px-3 py-2 min-w-[80px] text-center flex-shrink-0">
-                                        <span className="text-xs font-bold block">{t.name}</span>
+                                    <div key={t.name} className="rounded-xl px-3 py-2 min-w-[80px] text-center flex-shrink-0" style={{ background: 'rgba(255, 255, 255, 0.4)', border: '1px solid rgba(255, 255, 255, 0.6)' }}>
+                                        <span className="text-xs font-bold block" style={{ color: 'rgba(0, 0, 0, 0.85)' }}>{t.name}</span>
                                         <span className="text-[11px] font-semibold" style={{ color: t.color }}>{t.change}</span>
                                     </div>
                                 ))}
@@ -222,15 +221,14 @@ const DummyDashboard = ({ onLock }) => {
                         </div>
                     </>
                 ) : (
-                    /* Activity / Transactions */
                     <>
                         {transactions.map((tx, i) => (
-                            <div key={i} className="bg-[#111] p-4 rounded-2xl flex items-center justify-between border border-[#1c1c1c]">
+                            <div key={i} className="p-4 rounded-2xl flex items-center justify-between" style={{ background: 'rgba(255, 255, 255, 0.4)', border: '1px solid rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(20px)' }}>
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${tx.type === 'receive' ? 'bg-green-500/10 text-green-400' :
-                                            tx.type === 'send' ? 'bg-red-500/10 text-red-400' :
-                                                tx.type === 'swap' ? 'bg-purple-500/10 text-purple-400' :
-                                                    'bg-blue-500/10 text-blue-400'
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${tx.type === 'receive' ? 'bg-green-500/10 text-green-600' :
+                                        tx.type === 'send' ? 'bg-red-500/10 text-red-600' :
+                                            tx.type === 'swap' ? 'bg-purple-500/10 text-purple-600' :
+                                                'bg-blue-500/10 text-blue-600'
                                         }`}>
                                         {tx.type === 'receive' ? <ArrowDownRight size={18} /> :
                                             tx.type === 'send' ? <ArrowUpRight size={18} /> :
@@ -238,17 +236,17 @@ const DummyDashboard = ({ onLock }) => {
                                                     <CreditCard size={16} />}
                                     </div>
                                     <div>
-                                        <h4 className="font-semibold text-[14px] capitalize">{tx.type}</h4>
-                                        <span className="text-[11px] text-gray-500">
+                                        <h4 className="font-semibold text-[14px] capitalize" style={{ color: 'rgba(0, 0, 0, 0.85)' }}>{tx.type}</h4>
+                                        <span className="text-[11px]" style={{ color: 'rgba(0, 0, 0, 0.4)' }}>
                                             {tx.type === 'swap' ? tx.amount : `${tx.amount} ${tx.asset}`}
                                         </span>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <span className={`text-[13px] font-bold ${tx.usdValue.startsWith('+') ? 'text-green-400' :
-                                            tx.usdValue.startsWith('-') ? 'text-red-400' : 'text-white'
-                                        }`}>{tx.usdValue}</span>
-                                    <div className="text-[10px] text-gray-600 flex items-center justify-end gap-1">
+                                    <span className={`text-[13px] font-bold ${tx.usdValue.startsWith('+') ? 'text-green-600' :
+                                        tx.usdValue.startsWith('-') ? 'text-red-600' : ''
+                                        }`} style={!tx.usdValue.startsWith('+') && !tx.usdValue.startsWith('-') ? { color: 'rgba(0, 0, 0, 0.85)' } : {}}>{tx.usdValue}</span>
+                                    <div className="text-[10px] flex items-center justify-end gap-1" style={{ color: 'rgba(0, 0, 0, 0.3)' }}>
                                         <Clock size={9} />{tx.time}
                                     </div>
                                 </div>
@@ -259,7 +257,7 @@ const DummyDashboard = ({ onLock }) => {
             </div>
 
             {/* Bottom Nav */}
-            <div className="h-20 bg-[#050505] border-t border-[#1a1a1a] flex items-center justify-around text-gray-500 pb-4">
+            <div className="h-20 flex items-center justify-around pb-4" style={{ background: 'rgba(255, 255, 255, 0.45)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', borderTop: '1px solid rgba(255, 255, 255, 0.5)' }}>
                 <NavIcon icon={<Wallet />} label="Wallet" active />
                 <NavIcon icon={<TrendingUp />} label="Market" />
                 <NavIcon icon={<RefreshCcw />} label="Trade" />
@@ -272,15 +270,15 @@ const DummyDashboard = ({ onLock }) => {
 
 const ActionButton = ({ icon, label, onClick }) => (
     <div className="flex flex-col items-center gap-1.5 cursor-pointer group" onClick={onClick}>
-        <div className="w-12 h-12 rounded-2xl bg-[#1a1a1a] flex items-center justify-center text-white group-active:scale-90 transition-transform border border-[#2a2a2a]">
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center group-active:scale-90 transition-transform" style={{ background: 'rgba(255, 255, 255, 0.5)', border: '1px solid rgba(255, 255, 255, 0.7)', color: 'rgba(0, 0, 0, 0.7)' }}>
             {React.cloneElement(icon, { size: 18 })}
         </div>
-        <span className="text-[10px] text-gray-400 font-semibold">{label}</span>
+        <span className="text-[10px] font-semibold" style={{ color: 'rgba(0, 0, 0, 0.5)' }}>{label}</span>
     </div>
 );
 
 const NavIcon = ({ icon, label, active }) => (
-    <div className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${active ? 'text-white' : 'text-gray-600'}`}>
+    <div className={`flex flex-col items-center gap-1 cursor-pointer transition-colors`} style={{ color: active ? 'rgba(0, 0, 0, 0.85)' : 'rgba(0, 0, 0, 0.3)' }}>
         {React.cloneElement(icon, { size: 22 })}
         <span className="text-[10px] font-medium">{label}</span>
     </div>

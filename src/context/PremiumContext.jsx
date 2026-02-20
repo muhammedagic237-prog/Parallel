@@ -1,17 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
 const PremiumContext = createContext();
 
-export const usePremium = () => useContext(PremiumContext);
-
 export const PremiumProvider = ({ children }) => {
-    const [isPremium, setIsPremium] = useState(false);
-
-    useEffect(() => {
-        // Check local storage on mount
-        const unlocked = localStorage.getItem('parallel_premium_unlocked') === 'true';
-        setIsPremium(unlocked);
-    }, []);
+    const [isPremium, setIsPremium] = useState(() => {
+        return localStorage.getItem('parallel_premium_unlocked') === 'true';
+    });
 
     const unlockPremium = () => {
         localStorage.setItem('parallel_premium_unlocked', 'true');
@@ -26,3 +20,6 @@ export const PremiumProvider = ({ children }) => {
         </PremiumContext.Provider>
     );
 };
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const usePremium = () => useContext(PremiumContext);

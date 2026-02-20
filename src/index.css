@@ -1,20 +1,22 @@
 @import "tailwindcss";
 
 :root {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-    background-color: #000000;
-    color: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
 }
 
 html,
 body {
-    overscroll-behavior-y: auto;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
+    overscroll-behavior-y: auto;
     user-select: none;
     -webkit-user-select: none;
-    -webkit-tap-highlight-color: transparent;
-    /* Smooth momentum scrolling (iOS) */
     -webkit-overflow-scrolling: touch;
+    touch-action: manipulation;
 }
 
 /* Allow text selection in inputs */
@@ -24,22 +26,50 @@ textarea {
     -webkit-user-select: text;
 }
 
-/* Hide Scrollbar but allow scroll */
+/* Hide scrollbar */
 ::-webkit-scrollbar {
     width: 0px;
     background: transparent;
 }
 
-/* --- PERFORMANCE: GPU Acceleration --- */
+/* iOS 26 animated wallpaper gradient */
+.ios26-wallpaper {
+    background: linear-gradient(-45deg,
+            #a8edea, #fed6e3, #c3b1e1, #a0c4ff,
+            #fbc2eb, #bde0fe, #e0c3fc, #ffd6e0);
+    background-size: 400% 400%;
+    animation: wallpaperShift 20s ease infinite;
+}
 
-/* Chat scroll container — hardware accelerated */
+@keyframes wallpaperShift {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    25% {
+        background-position: 100% 50%;
+    }
+
+    50% {
+        background-position: 100% 0%;
+    }
+
+    75% {
+        background-position: 0% 100%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* GPU acceleration */
 .overflow-y-auto {
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
     will-change: scroll-position;
 }
 
-/* Animated elements — GPU composited */
 [class*="animate-"] {
     will-change: transform, opacity;
     transform: translateZ(0);
@@ -47,20 +77,11 @@ textarea {
     backface-visibility: hidden;
 }
 
-/* Message bubbles — GPU layer for smooth scroll */
-[class*="rounded-[22px]"] {
-    transform: translateZ(0);
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-}
-
-/* Fixed/absolute positioned overlays — own layer */
 .fixed {
     will-change: transform;
     transform: translateZ(0);
 }
 
-/* Transitions — hardware accelerated */
 .transition-transform,
 .transition-all,
 .transition-colors,
@@ -68,14 +89,12 @@ textarea {
     will-change: transform, opacity;
 }
 
-/* Touch targets — instant feedback */
 button,
 [role="button"] {
     touch-action: manipulation;
     -webkit-touch-callout: none;
 }
 
-/* Reduce motion for users who prefer it */
 @media (prefers-reduced-motion: reduce) {
 
     *,

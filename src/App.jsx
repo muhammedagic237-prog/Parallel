@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { ArrowRight, Zap, EyeOff, MessagesSquare, CheckCircle2, ChevronRight, Fingerprint } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
 
 import AuthGate from './components/auth/AuthGate';
 import PrivateChat from './components/private/PrivateChat';
+import SystemMonitor from './components/public/SystemMonitor';
 import DummyDashboard from './components/public/DummyDashboard'; // Realistic Crypto Wallet
 
 import { PremiumProvider } from './context/PremiumContext';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
   const [locked, setLocked] = useState(true); // Locked by default
@@ -37,39 +40,43 @@ function App() {
 
   return (
     <PremiumProvider>
-      <div className="h-[100dvh] w-full bg-black overflow-hidden relative">
-        {/* Privacy Curtain (Blur) */}
-        <AnimatePresence>
-          {isBackgrounded && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
-              style={{ background: 'rgba(6, 10, 20, 0.88)', backdropFilter: 'blur(40px) saturate(180%)', WebkitBackdropFilter: 'blur(40px) saturate(180%)' }}
-            >
-              <div className="text-center">
-                <div className="w-20 h-20 rounded-3xl mx-auto mb-6 flex items-center justify-center" style={{ background: 'rgba(100, 160, 255, 0.08)', border: '1px solid rgba(120, 180, 255, 0.1)' }}>
-                  <span className="text-4xl">🔒</span>
+      <ErrorBoundary>
+        <div className="h-[100dvh] w-full ios26-wallpaper overflow-hidden relative">
+          {/* Privacy Curtain (Frosted Glass) */}
+          <AnimatePresence>
+            {isBackgrounded && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
+                style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(50px) saturate(200%)', WebkitBackdropFilter: 'blur(50px) saturate(200%)' }}
+              >
+                <div className="text-center">
+                  <div className="w-20 h-20 rounded-3xl mx-auto mb-6 flex items-center justify-center" style={{ background: 'rgba(255, 255, 255, 0.6)', border: '1px solid rgba(255, 255, 255, 0.8)', boxShadow: '0 8px 32px rgba(0,0,0,0.06)' }}>
+                    <span className="text-4xl">🔒</span>
+                  </div>
+                  <h2 className="text-2xl font-bold tracking-widest uppercase" style={{ color: 'rgba(0, 0, 0, 0.8)' }}>Parallel Protected</h2>
+                  <p className="text-sm mt-2" style={{ color: 'rgba(0, 0, 0, 0.35)' }}>Content Hidden for Privacy</p>
                 </div>
-                <h2 className="text-2xl font-bold tracking-widest uppercase text-white">Parallel Protected</h2>
-                <p className="text-sm mt-2" style={{ color: 'rgba(140, 180, 255, 0.4)' }}>Content Hidden for Privacy</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-        <AnimatePresence mode="wait">
-          {locked ? (
-            <AuthGate key="auth" onAuthenticated={handleAuth} />
-          ) : mode === 'dummy' ? (
-            <DummyDashboard key="dummy" onLock={handleLock} />
-          ) : mode === 'private' ? (
-            <PrivateChat key="private" onLock={handleLock} />
-          ) : null}
-        </AnimatePresence>
-      </div>
+          <AnimatePresence mode="wait">
+            {locked ? (
+              <AuthGate key="auth" onAuthenticated={handleAuth} />
+            ) : mode === 'dummy' ? (
+              <DummyDashboard key="dummy" onLock={handleLock} />
+            ) : mode === 'private' ? (
+              <PrivateChat key="private" onLock={handleLock} />
+            ) : mode === 'notes' ? (
+              <SystemMonitor key="sysmon" onLock={handleLock} />
+            ) : null}
+          </AnimatePresence>
+        </div>
+      </ErrorBoundary>
     </PremiumProvider>
   );
 }
