@@ -273,24 +273,25 @@ const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, r
 
             {peers.length === 0 && (
                 <div className="flex flex-col items-center justify-center flex-1 px-6 py-10">
-                    {/* Animated Radar Pulse */}
-                    <div className="relative w-32 h-32 mb-8 flex items-center justify-center">
-                        {/* Outer pulsing rings */}
-                        <div className="absolute inset-0 rounded-full animate-ping opacity-[0.06]" style={{ background: status === 'connected' ? 'rgba(59, 130, 246, 0.5)' : 'rgba(234, 179, 8, 0.5)', animationDuration: '2.5s' }}></div>
-                        <div className="absolute inset-4 rounded-full animate-ping opacity-[0.1]" style={{ background: status === 'connected' ? 'rgba(59, 130, 246, 0.4)' : 'rgba(234, 179, 8, 0.4)', animationDuration: '2s', animationDelay: '0.5s' }}></div>
-                        <div className="absolute inset-8 rounded-full animate-ping opacity-[0.15]" style={{ background: status === 'connected' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(234, 179, 8, 0.3)', animationDuration: '1.5s', animationDelay: '1s' }}></div>
+                    {/* Animated Radar Pulse - Larger and more premium */}
+                    <div className="relative w-48 h-48 mb-8 flex items-center justify-center">
+                        {/* Outer pulsing rings - Expanded insets and boosted opacity */}
+                        <div className="absolute -inset-4 rounded-full animate-ping opacity-[0.2]" style={{ background: status === 'connected' ? 'rgba(59, 130, 246, 0.7)' : 'rgba(234, 179, 8, 0.7)', animationDuration: '3s' }}></div>
+                        <div className="absolute -inset-2 rounded-full animate-ping opacity-[0.25]" style={{ background: status === 'connected' ? 'rgba(59, 130, 246, 0.6)' : 'rgba(234, 179, 8, 0.6)', animationDuration: '2.5s', animationDelay: '0.4s' }}></div>
+                        <div className="absolute inset-2 rounded-full animate-ping opacity-[0.3]" style={{ background: status === 'connected' ? 'rgba(59, 130, 246, 0.5)' : 'rgba(234, 179, 8, 0.5)', animationDuration: '2s', animationDelay: '0.8s' }}></div>
+                        <div className="absolute inset-6 rounded-full animate-ping opacity-[0.4]" style={{ background: status === 'connected' ? 'rgba(59, 130, 246, 0.4)' : 'rgba(234, 179, 8, 0.4)', animationDuration: '1.5s', animationDelay: '1.2s' }}></div>
                         {/* Center icon */}
-                        <div className="relative w-16 h-16 rounded-full flex items-center justify-center z-10" style={{ background: 'rgba(255, 255, 255, 0.6)', border: '1px solid rgba(255, 255, 255, 0.8)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
+                        <div className="relative w-20 h-20 rounded-full flex items-center justify-center z-10" style={{ background: 'rgba(255, 255, 255, 0.7)', border: '2px solid rgba(255, 255, 255, 0.9)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
                             {status === 'connecting' ? (
                                 <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}>
-                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(234, 179, 8, 0.8)" strokeWidth="2" strokeLinecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(234, 179, 8, 0.9)" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
                                 </motion.div>
                             ) : status === 'connected' ? (
                                 <motion.div animate={{ scale: [1, 1.15, 1] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}>
-                                    <Send size={26} strokeWidth={1.5} className="-rotate-12" style={{ color: 'rgba(59, 130, 246, 0.8)' }} />
+                                    <Send size={32} strokeWidth={2} className="-rotate-12" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
                                 </motion.div>
                             ) : (
-                                <Phone size={26} style={{ color: 'rgba(0, 0, 0, 0.3)' }} />
+                                <Phone size={32} strokeWidth={2} style={{ color: 'rgba(0, 0, 0, 0.4)' }} />
                             )}
                         </div>
                     </div>
