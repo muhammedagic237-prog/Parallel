@@ -321,7 +321,8 @@ export const useP2P = (roomId, username) => {
 
             // 2. Init PeerJS — Generate a FRESH ID every session
             // We generate new IDs to match new crypto keys. Old ghosts are cleaned by heartbeat timeout.
-            const id = `parallel_${roomId}_${username}_${Date.now().toString(36)}`;
+            // Using a strict alphanumeric random ID to prevent PeerJS server rejection from spaces/emojis in names.
+            const id = `pui_${Math.random().toString(36).substring(2, 12)}_${Date.now().toString(36)}`;
             setMyPeerId(id);
             myPeerIdRef.current = id;
 
