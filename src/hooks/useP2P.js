@@ -367,28 +367,11 @@ export const useP2P = (roomId, username) => {
                     setPeers(others);
                     peersRef.current = others;
 
-                    // Connect to any unconnected peers with AGGRESSIVE RETRY
+                    // Connect to any unconnected peers
                     others.forEach((p) => {
                         const existing = connections.current[p.id];
                         if (!existing || !existing.conn || !existing.conn.open) {
-                            // Retry connection loop
-                            const attemptConnection = async (retries = 3) => {
-                                if (retries === 0 || destroyed) return;
-
-                                await connectToPeer(p);
-
-                                // Wait 2 seconds, check if it opened. If not, retry.
-                                setTimeout(() => {
-                                    const check = connections.current[p.id];
-                                    if (!check || !check.conn || !check.conn.open) {
-                                        console.warn(`[P2P] Background connection to ${p.id} failed, retrying... (${retries - 1} left)`);
-                                        attemptConnection(retries - 1);
-                                    }
-                                }, 2000);
-                            };
-
-                            attemptConnection();
-
+                            connectToPeer(p);
                         } else if (existing && !existing.sharedSecret) {
                             // Try to derive key if missing
                             (async () => {
@@ -519,22 +502,9 @@ export const useP2P = (roomId, username) => {
                 if (peerData) {
                     await connectToPeer(peerData);
 
-                    // AGGRESSIVE POLLING HACK FOR MOBILE SAFARI
-                    // Instead of a blind timeout, actively wait for the connection to open
-                    let retries = 0;
-                    while (retries < 50) { // 50 * 100ms = 5 seconds max wait
-                        entry = connections.current[peerId];
-                        if (entry && entry.conn && entry.conn.open) {
-                            console.log(`[P2P] Connection established after ${retries * 100}ms`);
-                            break;
-                        }
-                        await new Promise(r => setTimeout(r, 100));
-                        retries++;
-                    }
-
-                    if (!entry || !entry.conn || !entry.conn.open) {
-                        console.error(`[P2P] Handshake polling timed out for ${peerId}`);
-                    }
+                    // Give mobile WebRTC handshake time to establish
+                    await new Promise(r => setTimeout(r, 2000));
+                    entry = connections.current[peerId];
                 }
             }
 
