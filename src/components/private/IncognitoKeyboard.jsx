@@ -149,12 +149,12 @@ const IncognitoKeyboard = memo(({ onKeyPress, onBackspace, onEnter, visible }) =
                 onMouseUp={key === 'BACK' ? stopBackspaceHold : undefined}
                 onMouseLeave={key === 'BACK' ? stopBackspaceHold : undefined}
                 onClick={() => handleKey(key)}
-                className={`h-[42px] rounded-lg flex items-center justify-center active:scale-[0.92] active:opacity-70 transition-all select-none ${getKeyWidth(key)}`}
+                className={`h-[50px] text-[20px] rounded-[10px] flex items-center justify-center active:scale-[0.92] active:opacity-70 transition-all select-none ${getKeyWidth(key)}`}
                 style={{
-                    background: isSpecial ? specialBg : 'rgba(255, 255, 255, 0.65)',
+                    background: isSpecial ? specialBg : 'rgba(255, 255, 255, 0.95)',
                     color: isSpecial ? specialColor : 'rgba(0, 0, 0, 0.85)',
                     border: key === 'ENTER' ? 'none' : '1px solid rgba(255, 255, 255, 0.5)',
-                    boxShadow: isSpecial ? 'none' : '0 1px 3px rgba(0,0,0,0.06)',
+                    boxShadow: isSpecial ? 'none' : '0 1px 3px rgba(0,0,0,0.1)',
                     WebkitTapHighlightColor: 'transparent',
                     touchAction: 'manipulation',
                 }}
@@ -192,9 +192,9 @@ const IncognitoKeyboard = memo(({ onKeyPress, onBackspace, onEnter, visible }) =
             </div>
 
             {/* Keyboard Rows */}
-            <div className="px-1.5 pb-2 space-y-[5px]">
+            <div className="px-2 pt-2 pb-4 space-y-[8px]">
                 {currentLayout.map((row, ri) => (
-                    <div key={ri} className="flex gap-[5px] justify-center px-0.5">
+                    <div key={ri} className="flex gap-[6px] justify-center px-0.5">
                         {row.map(key => renderKey(key))}
                     </div>
                 ))}
