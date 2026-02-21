@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
 
-const DUMMY_PIN = "0000";
-const NOTES_PIN = "3333";
+
 
 const AuthGate = ({ onAuthenticated }) => {
     const [savedPin, setSavedPin] = useState(() => localStorage.getItem('parallel_secret_pin'));
@@ -48,13 +47,7 @@ const AuthGate = ({ onAuthenticated }) => {
                 } else {
                     if (newPin === savedPin) {
                         if (navigator.vibrate) navigator.vibrate(30);
-                        onAuthenticated('private');
-                    } else if (newPin === DUMMY_PIN) {
-                        if (navigator.vibrate) navigator.vibrate(30);
-                        onAuthenticated('dummy');
-                    } else if (newPin === NOTES_PIN) {
-                        if (navigator.vibrate) navigator.vibrate(30);
-                        onAuthenticated('notes');
+                        onAuthenticated();
                     } else {
                         if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
                         setError(true);

@@ -4,15 +4,14 @@ import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line 
 
 import AuthGate from './components/auth/AuthGate';
 import PrivateChat from './components/private/PrivateChat';
-import SystemMonitor from './components/public/SystemMonitor';
-import DummyDashboard from './components/public/DummyDashboard'; // Realistic Crypto Wallet
+import CalculatorDecoy from './components/public/CalculatorDecoy';
 
 import { PremiumProvider } from './context/PremiumContext';
 import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
+  const [showDecoy, setShowDecoy] = useState(true);
   const [locked, setLocked] = useState(true); // Locked by default
-  const [mode, setMode] = useState('private'); // 'private' | 'dummy'
   const [isBackgrounded, setIsBackgrounded] = useState(false);
 
   // Curtain Mode: Blur when app is in background
@@ -29,13 +28,17 @@ function App() {
     };
   }, []);
 
-  const handleAuth = (accessMode) => {
-    setMode(accessMode);
+  const handleDecoyUnlock = () => {
+    setShowDecoy(false);
+  };
+
+  const handleAuth = () => {
     setLocked(false);
   };
 
   const handleLock = () => {
     setLocked(true);
+    setShowDecoy(true);
   };
 
   return (
@@ -65,15 +68,13 @@ function App() {
           </AnimatePresence>
 
           <AnimatePresence mode="wait">
-            {locked ? (
+            {showDecoy ? (
+              <CalculatorDecoy key="calc" onLock={handleDecoyUnlock} />
+            ) : locked ? (
               <AuthGate key="auth" onAuthenticated={handleAuth} />
-            ) : mode === 'dummy' ? (
-              <DummyDashboard key="dummy" onLock={handleLock} />
-            ) : mode === 'private' ? (
+            ) : (
               <PrivateChat key="private" onLock={handleLock} />
-            ) : mode === 'notes' ? (
-              <SystemMonitor key="sysmon" onLock={handleLock} />
-            ) : null}
+            )}
           </AnimatePresence>
         </div>
       </ErrorBoundary>
