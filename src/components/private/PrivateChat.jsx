@@ -425,11 +425,18 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
     const [showKeyboard, setShowKeyboard] = useState(false);
     const [showOptions, setShowOptions] = useState(false);
     const [showReportModal, setShowReportModal] = useState(false);
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingDuration, setRecordingDuration] = useState(0);
     const { isPremium } = usePremium();
     const endRef = useRef(null);
     const typingTimeout = useRef(null);
     const fileInputRef = useRef(null);
     const inputDisplayRef = useRef(null);
+
+    // Audio Recording Refs
+    const mediaRecorderRef = useRef(null);
+    const audioChunksRef = useRef([]);
+    const recordingTimerRef = useRef(null);
 
     // Incognito keyboard handlers
     const handleIncognitoKey = useCallback((key) => {
@@ -452,6 +459,84 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
         setInput("");
         if (navigator.vibrate) navigator.vibrate(10);
     }, [input, onSendMessage]);
+
+    // --- Voice Recording Logic ---
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorderRef.current = new MediaRecorder(stream, {
+                // Try to use highly compressed webm/opus if available, fallback to default
+                mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : ''
+            });
+            audioChunksRef.current = [];
+
+            mediaRecorderRef.current.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+
+            mediaRecorderRef.current.onstop = () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                // Convert to Base64 to send over the WebRTC JSON DataChannel
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
+                reader.onloadend = () => {
+                    const base64AudioMessage = reader.result;
+                    if (recordingDuration > 0) { // Don't send accidental micro-clicks
+                        onSendMessage(base64AudioMessage, 'audio');
+                    }
+                };
+
+                // Cleanup tracks
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            mediaRecorderRef.current.start();
+            setIsRecording(true);
+            setRecordingDuration(0);
+            if (navigator.vibrate) navigator.vibrate([15, 30]);
+
+            recordingTimerRef.current = setInterval(() => {
+                setRecordingDuration(prev => {
+                    if (prev >= 59) { // Max 60 seconds forced stop
+                        stopRecording();
+                        return 60;
+                    }
+                    return prev + 1;
+                });
+            }, 1000);
+
+        } catch (err) {
+            console.error("Microphone access denied or failed", err);
+            // Optionally show a toast here in production
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+            mediaRecorderRef.current.stop();
+        }
+        setIsRecording(false);
+        if (recordingTimerRef.current) {
+            clearInterval(recordingTimerRef.current);
+        }
+        if (navigator.vibrate) navigator.vibrate([30, 15]);
+    };
+
+    const cancelRecording = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+            mediaRecorderRef.current.onstop = null; // Prevent sending
+            mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+            mediaRecorderRef.current.stop();
+        }
+        setIsRecording(false);
+        setRecordingDuration(0);
+        if (recordingTimerRef.current) {
+            clearInterval(recordingTimerRef.current);
+        }
+        if (navigator.vibrate) navigator.vibrate(50);
+    };
 
     const handleImagePick = useCallback(() => {
         if (!isPremium) {
@@ -505,11 +590,6 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
         setInput("");
         if (navigator.vibrate) navigator.vibrate(10);
     }, [input, onSendMessage]);
-
-    const handleHeartSend = useCallback(() => {
-        onSendMessage('❤️', 'sticker');
-        if (navigator.vibrate) navigator.vibrate(10);
-    }, [onSendMessage]);
 
 
 
@@ -735,6 +815,27 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
                                         >
                                             <img src={msg.text} alt="Shared" className="max-w-[260px] max-h-[300px] object-cover" style={{ borderRadius: 'inherit' }} />
                                         </div>
+                                    ) : msg.type === 'audio' ? (
+                                        <div
+                                            onDoubleClick={() => setReactionMsg(msg.id)}
+                                            className={`
+                                                px-3.5 py-2 text-[15px] leading-[20px] break-words cursor-pointer select-none flex items-center gap-3 w-48 ${bubbleRounding}
+                                            `}
+                                            style={isMe
+                                                ? { background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.75), rgba(99, 102, 241, 0.65))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.25)', color: 'white', boxShadow: '0 4px 16px rgba(59, 130, 246, 0.15)' }
+                                                : { background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.65)', color: 'rgba(0, 0, 0, 0.85)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.04)' }
+                                            }
+                                        >
+                                            <div className={`p-2 rounded-full flex-shrink-0 ${isMe ? 'bg-white/20' : 'bg-blue-500/10'}`}>
+                                                <Mic size={16} className={isMe ? 'text-white' : 'text-blue-500'} />
+                                            </div>
+                                            <audio
+                                                controls
+                                                src={msg.text}
+                                                className="w-full h-8 outline-none custom-audio-player"
+                                                style={{ filter: isMe ? 'invert(1) hue-rotate(180deg) brightness(1.5)' : '' }}
+                                            />
+                                        </div>
                                     ) : (
                                         <div
                                             onDoubleClick={() => setReactionMsg(msg.id)}
@@ -798,43 +899,54 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
 
                 <div
                     className="flex-1 rounded-full h-11 flex items-center px-4 gap-2 cursor-text"
-                    style={{ background: 'rgba(255, 255, 255, 0.5)', border: '1px solid rgba(255, 255, 255, 0.65)', backdropFilter: 'blur(10px)' }}
-                    onClick={() => { setShowKeyboard(true); setShowStickers(false); }}
+                    style={{ background: isRecording ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255, 255, 255, 0.5)', border: isRecording ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(255, 255, 255, 0.65)', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}
+                    onClick={() => { if (!isRecording) { setShowKeyboard(true); setShowStickers(false); } }}
                 >
-                    <div ref={inputDisplayRef} className="flex-1 text-[15px] min-h-[20px] select-none overflow-hidden whitespace-nowrap" style={{ color: input ? 'rgba(0, 0, 0, 0.85)' : 'rgba(0, 0, 0, 0.35)' }}>
-                        {input || 'Message...'}
-                        {showKeyboard && <span className="inline-block w-[2px] h-[18px] bg-blue-500 ml-[1px] align-text-bottom animate-pulse" />}
-                    </div>
-                    {input ? (
-                        <button type="submit" className="text-blue-500 font-bold text-sm flex-shrink-0 active:opacity-60">Send</button>
+                    {isRecording ? (
+                        <div className="flex-1 flex items-center gap-3 animate-pulse text-red-500 font-medium text-sm w-full">
+                            <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
+                            Recording... 0:{recordingDuration.toString().padStart(2, '0')}
+                            <button type="button" onClick={cancelRecording} className="ml-auto text-xs opacity-70 hover:opacity-100 flex items-center gap-1">
+                                <X size={14} /> Cancel
+                            </button>
+                        </div>
                     ) : (
                         <>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    if (!isPremium) onOpenStore();
-                                    else setShowStickers(!showStickers);
-                                }}
-                                className="flex-shrink-0 active:opacity-50"
-                                style={{ color: 'rgba(0, 0, 0, 0.5)' }}
-                            >
-                                <Smile size={22} strokeWidth={1.5} />
-                            </button>
+                            <div ref={inputDisplayRef} className="flex-1 text-[15px] min-h-[20px] select-none overflow-hidden whitespace-nowrap" style={{ color: input ? 'rgba(0, 0, 0, 0.85)' : 'rgba(0, 0, 0, 0.35)' }}>
+                                {input || 'Message...'}
+                                {showKeyboard && <span className="inline-block w-[2px] h-[18px] bg-blue-500 ml-[1px] align-text-bottom animate-pulse" />}
+                            </div>
+                            {input ? (
+                                <button type="submit" className="text-blue-500 font-bold text-sm flex-shrink-0 active:opacity-60">Send</button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (!isPremium) onOpenStore();
+                                        else setShowStickers(!showStickers);
+                                    }}
+                                    className="flex-shrink-0 active:opacity-50"
+                                    style={{ color: 'rgba(0, 0, 0, 0.5)' }}
+                                >
+                                    <Smile size={22} strokeWidth={1.5} />
+                                </button>
+                            )}
                         </>
                     )}
                 </div>
 
-                {/* Heart button */}
+                {/* Microphone / Heart button */}
                 {!input && (
                     <button
                         type="button"
-                        onClick={handleHeartSend}
-                        className="flex-shrink-0 active:scale-75 transition-transform"
-                        style={{ color: 'rgba(0, 0, 0, 0.5)' }}
+                        onPointerDown={startRecording}
+                        onPointerUp={stopRecording}
+                        onPointerLeave={stopRecording}
+                        onContextMenu={(e) => e.preventDefault()} // prevent context menu on long press
+                        className={`flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-full transition-all touch-none select-none ${isRecording ? 'bg-red-500 text-white scale-110 shadow-lg' : 'bg-transparent text-gray-500 active:scale-95'}`}
+                        style={{ color: !isRecording ? 'rgba(0, 0, 0, 0.5)' : undefined }}
                     >
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                        </svg>
+                        <Mic size={22} strokeWidth={1.5} />
                     </button>
                 )}
             </form>
