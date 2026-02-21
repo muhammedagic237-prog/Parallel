@@ -501,7 +501,8 @@ export const useP2P = (roomId, username) => {
                 const peerData = peersRef.current.find(p => p.id === peerId);
                 if (peerData) {
                     await connectToPeer(peerData);
-                    await new Promise(r => setTimeout(r, 1500));
+                    // Give mobile Safari WebRTC handshake more time to establish
+                    await new Promise(r => setTimeout(r, 3000));
                     entry = connections.current[peerId];
                 }
             }
