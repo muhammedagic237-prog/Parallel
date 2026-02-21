@@ -598,7 +598,7 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
             if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
                 try {
                     mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-                } catch (e) { /* ignore */ }
+                } catch { /* ignore */ }
             }
             if (recordingTimerRef.current) {
                 clearInterval(recordingTimerRef.current);

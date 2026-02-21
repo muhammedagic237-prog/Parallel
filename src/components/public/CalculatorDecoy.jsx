@@ -106,7 +106,7 @@ const CalculatorDecoy = ({ onLock }) => {
     }, [operator, prevValue, display]);
 
     // -- Secret Trigger Mechanism --
-    const handleEqualsInteractionStart = useCallback((e) => {
+    const handleEqualsInteractionStart = useCallback(() => {
         // e.preventDefault() removed to fix passive event listener warning
         handleEquals();
 

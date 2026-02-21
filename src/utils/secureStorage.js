@@ -45,7 +45,6 @@ export async function saveMessagesSecurely(messages) {
         // Store
         localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(Array.from(new Uint8Array(ciphertext))));
         localStorage.setItem(STORAGE_KEY_IV, JSON.stringify(Array.from(iv)));
-        console.log("Messages saved securely.");
     } catch (e) {
         console.error("Save failed", e);
     }
@@ -89,7 +88,6 @@ function pruneOldMessages(messages) {
     });
 
     if (validMessages.length < messages.length) {
-        console.log(`Pruned ${messages.length - validMessages.length} old messages.`);
         saveMessagesSecurely(validMessages); // Re-save pruned list
     }
 
@@ -100,7 +98,6 @@ function pruneOldMessages(messages) {
 export function clearSecureStorage() {
     localStorage.removeItem(STORAGE_KEY_DATA);
     localStorage.removeItem(STORAGE_KEY_IV);
-    console.log("Secure storage wiped.");
 }
 
 // Check if storage is enabled (UI Flag)

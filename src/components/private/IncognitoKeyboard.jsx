@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, memo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion'; // eslint-disable-line no-unused-vars
+import { motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
 import { Delete, ArrowBigUp, Globe, ChevronLeft } from 'lucide-react';
 
 const LAYOUTS = {
