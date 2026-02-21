@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
-import { ArrowLeft, Camera, Phone, Video, Send, Plus, PhoneOff, Mic, MicOff, VideoOff, Clock, Check, CheckCheck, Zap, Smile, Trash2, Image as ImageIcon, MoreVertical, Ban, AlertTriangle, Sun, Moon } from 'lucide-react';
+import { ArrowLeft, Camera, Phone, Video, Send, Plus, PhoneOff, Mic, MicOff, VideoOff, Clock, Check, CheckCheck, Zap, Smile, Trash2, Image as ImageIcon, MoreVertical, Ban, AlertTriangle } from 'lucide-react';
 import { useP2P } from '../../hooks/useP2P';
 import { usePremium } from '../../context/PremiumContext';
 import PremiumStore from '../premium/PremiumStore';
@@ -164,252 +164,220 @@ const PrivateChat = ({ onLock }) => {
 };
 
 // --- CHAT LIST — iOS 26 Liquid Glass ---
-const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, retentionEnabled, onToggleRetention, onPanicWipe, onOpenStore }) => {
-    // Local state for Dark Theme toggle
-    const [isDarkTheme, setIsDarkTheme] = useState(false);
+const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, retentionEnabled, onToggleRetention, onPanicWipe, onOpenStore }) => (
+    <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="flex flex-col h-full"
+    >
+        {/* Header — Frosted Glass */}
+        <header className="px-4 py-3 flex justify-between items-center sticky top-0 z-10" style={{ background: 'rgba(255, 255, 255, 0.45)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', borderBottom: '1px solid rgba(255, 255, 255, 0.5)' }}>
+            <div className="flex items-center gap-3">
+                <button onClick={onLock} style={{ color: 'rgba(0, 0, 0, 0.7)' }}>
+                    <ArrowLeft size={24} strokeWidth={2} />
+                </button>
+                <div className="flex items-center gap-1 cursor-pointer">
+                    <h1 className="text-xl font-bold" style={{ color: 'rgba(0, 0, 0, 0.85)' }}>{currentUser}</h1>
+                    <span className="text-[10px] mt-1" style={{ color: 'rgba(0, 0, 0, 0.3)' }}>▼</span>
+                </div>
+            </div>
+            <div className="flex gap-5 items-center">
+                {/* Premium Button */}
+                <button
+                    onClick={onOpenStore}
+                    className="text-amber-500 hover:text-amber-400 active:scale-95 transition-all"
+                    title="Premium Store"
+                >
+                    <Zap size={22} className="fill-current" />
+                </button>
 
-    // Color palettes
-    const theme = isDarkTheme
-        ? {
-            bg: 'rgba(28, 28, 30, 0.6)',
-            bgSolid: '#1c1c1e',
-            textPrimary: 'rgba(255, 255, 255, 0.9)',
-            textSecondary: 'rgba(255, 255, 255, 0.5)',
-            border: 'rgba(255, 255, 255, 0.15)',
-            cardBg: 'rgba(44, 44, 46, 0.6)',
-            iconBg: 'rgba(255, 255, 255, 0.1)',
-            neonBlue: '#0ea5e9' // Keeping the blue accents
-        }
-        : {
-            bg: 'rgba(255, 255, 255, 0.45)',
-            bgSolid: '#ffffff',
-            textPrimary: 'rgba(0, 0, 0, 0.85)',
-            textSecondary: 'rgba(0, 0, 0, 0.4)',
-            border: 'rgba(255, 255, 255, 0.5)',
-            cardBg: 'rgba(255, 255, 255, 0.35)',
-            iconBg: 'rgba(59, 130, 246, 0.08)',
-            neonBlue: '#3b82f6'
-        };
+                {/* Panic Wipe Button */}
+                <button
+                    onClick={onPanicWipe}
+                    className="relative active:scale-90 transition-all"
+                    title="Panic Wipe — Erase All Messages"
+                >
+                    <div className="p-1.5 rounded-lg" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                        <Trash2 size={16} className="text-red-500" strokeWidth={2} />
+                    </div>
+                </button>
 
-    return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex flex-col h-full transition-colors duration-500"
-            style={{ backgroundColor: isDarkTheme ? '#000000' : 'transparent' }} // Force black background if dark theme
-        >
-            {/* Header — Frosted Glass */}
-            <header className="px-4 py-3 flex justify-between items-center sticky top-0 z-10 transition-colors duration-500" style={{ background: theme.bg, backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', borderBottom: `1px solid ${theme.border}` }}>
-                <div className="flex items-center gap-3">
-                    <button onClick={onLock} style={{ color: theme.textPrimary }}>
-                        <ArrowLeft size={24} strokeWidth={2} />
-                    </button>
-                    <div className="flex items-center gap-1 cursor-pointer">
-                        <h1 className="text-xl font-bold transition-colors" style={{ color: theme.textPrimary }}>{currentUser}</h1>
-                        <span className="text-[10px] mt-1 transition-colors" style={{ color: theme.textSecondary }}>▼</span>
+                <button
+                    onClick={() => onToggleRetention(!retentionEnabled)}
+                    className={`relative transition-all ${retentionEnabled ? 'text-blue-500' : ''}`}
+                    style={!retentionEnabled ? { color: 'rgba(0, 0, 0, 0.3)' } : {}}
+                    title={retentionEnabled ? '24h Retention ON' : '24h Retention OFF'}
+                >
+                    <Clock size={22} strokeWidth={1.5} />
+                    {retentionEnabled && (
+                        <>
+                            <div className="absolute -top-1.5 -right-2.5 bg-blue-500 text-[7px] font-black text-white px-1 py-0.5 rounded-md leading-none tracking-tight" style={{ boxShadow: '0 0 8px rgba(59, 130, 246, 0.5)' }}>24H</div>
+                            <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-blue-400" style={{ animationDuration: '2s' }}></div>
+                        </>
+                    )}
+                </button>
+
+                {/* Mini Parallel Logo with connection indicator */}
+                <div className="relative">
+                    <svg width="28" height="28" viewBox="0 0 100 100" fill="none">
+                        <rect x="10" y="10" width="80" height="80" rx="22" stroke="rgba(0,0,0,0.15)" strokeWidth="4" fill="rgba(255,255,255,0.35)" />
+                        <line x1="40" y1="22" x2="40" y2="78" stroke="rgba(0,0,0,0.5)" strokeWidth="5" strokeLinecap="round" />
+                        <line x1="60" y1="22" x2="60" y2="78" stroke="rgba(0,0,0,0.5)" strokeWidth="5" strokeLinecap="round" />
+                    </svg>
+                    {status === 'connected' && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                    )}
+                    {status === 'connecting' && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-yellow-500 rounded-full border-2 border-white animate-pulse"></div>
+                    )}
+                </div>
+            </div>
+        </header>
+
+        {/* Search */}
+        <div className="px-4 mt-2 mb-4">
+            <div className="relative">
+                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                    <svg className="w-4 h-4" style={{ color: 'rgba(0, 0, 0, 0.3)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                <input type="text" placeholder="Search" className="w-full py-2.5 pl-10 pr-4 rounded-2xl text-sm outline-none" style={{ background: 'rgba(255, 255, 255, 0.45)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.6)', color: 'rgba(0, 0, 0, 0.8)' }} />
+            </div>
+        </div>
+
+        {/* Stories / Active Peers */}
+        <div className="pl-4 pb-4 overflow-x-auto whitespace-nowrap scrollbar-hide">
+            <div className="inline-flex flex-col items-center mr-4 relative">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center relative" style={{ background: 'rgba(255, 255, 255, 0.35)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
+                    <span className="text-2xl font-bold" style={{ color: 'rgba(0, 0, 0, 0.3)' }}>+</span>
+                    <div className="absolute bottom-0 right-0 bg-blue-500 rounded-full p-0.5">
+                        <Plus size={14} className="text-white" />
                     </div>
                 </div>
-                <div className="flex gap-4 items-center">
-
-                    {/* Theme Toggle Button */}
-                    <button
-                        onClick={() => setIsDarkTheme(!isDarkTheme)}
-                        className="active:scale-90 transition-all"
-                        style={{ color: isDarkTheme ? '#fbbf24' : theme.textSecondary }}
-                        title="Toggle Dark Theme"
-                    >
-                        {isDarkTheme ? <Sun size={20} strokeWidth={2} /> : <Moon size={20} strokeWidth={2} />}
-                    </button>
-                    {/* Premium Button */}
-                    <button
-                        onClick={onOpenStore}
-                        className="text-amber-500 hover:text-amber-400 active:scale-95 transition-all"
-                        title="Premium Store"
-                    >
-                        <Zap size={22} className="fill-current" />
-                    </button>
-
-                    {/* Panic Wipe Button */}
-                    <button
-                        onClick={onPanicWipe}
-                        className="relative active:scale-90 transition-all"
-                        title="Panic Wipe — Erase All Messages"
-                    >
-                        <div className="p-1.5 rounded-lg" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                            <Trash2 size={16} className="text-red-500" strokeWidth={2} />
-                        </div>
-                    </button>
-
-                    <button
-                        onClick={() => onToggleRetention(!retentionEnabled)}
-                        className={`relative transition-all ${retentionEnabled ? 'text-blue-500' : ''}`}
-                        style={!retentionEnabled ? { color: 'rgba(0, 0, 0, 0.3)' } : {}}
-                        title={retentionEnabled ? '24h Retention ON' : '24h Retention OFF'}
-                    >
-                        <Clock size={22} strokeWidth={1.5} />
-                        {retentionEnabled && (
-                            <>
-                                <div className="absolute -top-1.5 -right-2.5 bg-blue-500 text-[7px] font-black text-white px-1 py-0.5 rounded-md leading-none tracking-tight" style={{ boxShadow: '0 0 8px rgba(59, 130, 246, 0.5)' }}>24H</div>
-                                <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-blue-400" style={{ animationDuration: '2s' }}></div>
-                            </>
-                        )}
-                    </button>
-
-                    {/* Mini Parallel Logo with connection indicator */}
-                    <div className="relative">
-                        <svg width="28" height="28" viewBox="0 0 100 100" fill="none">
-                            <rect x="10" y="10" width="80" height="80" rx="22" stroke={isDarkTheme ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)"} strokeWidth="4" fill={isDarkTheme ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.35)"} className="transition-colors" />
-                            <line x1="40" y1="22" x2="40" y2="78" stroke={isDarkTheme ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.5)"} strokeWidth="5" strokeLinecap="round" className="transition-colors" />
-                            <line x1="60" y1="22" x2="60" y2="78" stroke={isDarkTheme ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.5)"} strokeWidth="5" strokeLinecap="round" className="transition-colors" />
-                        </svg>
-                        {status === 'connected' && (
-                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                        )}
-                        {status === 'connecting' && (
-                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-yellow-500 rounded-full border-2 border-white animate-pulse"></div>
-                        )}
-                    </div>
-                </div>
-            </header>
-
-            {/* Removed Search Bar to make UI cleaner and more spacious */}
-            <div className="h-6"></div>
-
-            {/* Stories / Active Peers */}
-            <div className="pl-4 pb-6 overflow-x-auto whitespace-nowrap scrollbar-hide">
-                <div className="inline-flex flex-col items-center mr-4 relative">
-                    <div className="w-16 h-16 rounded-full flex items-center justify-center relative transition-colors" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
-                        <span className="text-2xl font-bold transition-colors" style={{ color: theme.textSecondary }}>+</span>
-                        <div className="absolute bottom-0 right-0 rounded-full p-0.5" style={{ backgroundColor: theme.neonBlue }}>
-                            <Plus size={14} className="text-white" />
-                        </div>
-                    </div>
-                    <span className="text-xs mt-2 transition-colors" style={{ color: theme.textSecondary }}>Your note</span>
-                </div>
-
-                {peers.map(peer => (
-                    <div key={peer.id} className="inline-flex flex-col items-center mr-4" onClick={() => onSelectChat({ id: peer.id, name: peer.user })}>
-                        <div className="w-16 h-16 rounded-full p-[2px]" style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6, #6366f1, #0ea5e9)' }}>
-                            <div className="w-full h-full rounded-full p-[2px] transition-colors" style={{ background: theme.bgSolid }}>
-                                <div className="w-full h-full rounded-full flex items-center justify-center text-lg font-semibold cursor-pointer transition-colors" style={{ background: theme.iconBg, color: theme.textPrimary }}>
-                                    {(peer.user || '?')[0].toUpperCase()}
-                                </div>
-                            </div>
-                        </div>
-                        <span className="text-xs mt-2 transition-colors" style={{ color: theme.textPrimary }}>{peer.user}</span>
-                    </div>
-                ))}
+                <span className="text-xs mt-1" style={{ color: 'rgba(0, 0, 0, 0.4)' }}>Your note</span>
             </div>
 
-            {/* Messages List Area (Fills the rest of the screen) */}
-            <div className="flex-1 overflow-y-auto rounded-t-[32px] pt-4 transition-colors duration-500" style={{ background: isDarkTheme ? 'rgba(28,28,30,0.8)' : 'transparent', backdropFilter: isDarkTheme ? 'blur(20px)' : 'none' }}>
-                <div className="px-6 py-2 flex justify-between items-center mb-2">
-                    <h3 className="font-bold text-lg transition-colors" style={{ color: theme.textPrimary }}>Messages</h3>
-                    <span className="text-sm font-semibold transition-colors" style={{ color: theme.neonBlue }}>Requests</span>
-                </div>
-
-                {peers.length === 0 && (
-                    <div className="flex flex-col items-center justify-center flex-1 px-6 py-12 mt-4">
-                        {/* Animated Radar Pulse */}
-                        <div className="relative w-32 h-32 mb-10 flex items-center justify-center">
-                            {/* Outer pulsing rings */}
-                            <div className="absolute inset-0 rounded-full animate-ping opacity-[0.06]" style={{ background: status === 'connected' ? theme.neonBlue : 'rgba(234, 179, 8, 0.5)', animationDuration: '2.5s' }}></div>
-                            <div className="absolute inset-4 rounded-full animate-ping opacity-[0.1]" style={{ background: status === 'connected' ? theme.neonBlue : 'rgba(234, 179, 8, 0.4)', animationDuration: '2s', animationDelay: '0.5s' }}></div>
-                            <div className="absolute inset-8 rounded-full animate-ping opacity-[0.15]" style={{ background: status === 'connected' ? theme.neonBlue : 'rgba(234, 179, 8, 0.3)', animationDuration: '1.5s', animationDelay: '1s' }}></div>
-                            {/* Center icon */}
-                            <div className="relative w-16 h-16 rounded-full flex items-center justify-center z-10 transition-colors duration-500" style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
-                                {status === 'connecting' ? (
-                                    <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}>
-                                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(234, 179, 8, 0.8)" strokeWidth="2" strokeLinecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
-                                    </motion.div>
-                                ) : status === 'connected' ? (
-                                    <motion.div animate={{ scale: [1, 1.15, 1] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}>
-                                        <Send size={26} strokeWidth={1.5} className="-rotate-12 transition-colors" style={{ color: theme.neonBlue }} />
-                                    </motion.div>
-                                ) : (
-                                    <Phone size={26} className="transition-colors" style={{ color: theme.textSecondary }} />
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Status Text */}
-                        <h3 className="text-xl font-semibold mb-2 transition-colors" style={{ color: theme.textPrimary }}>
-                            {status === 'connecting' ? 'Connecting...' : status === 'connected' ? 'Room is Ready' : 'Disconnected'}
-                        </h3>
-                        <p className="text-base text-center mb-8 transition-colors max-w-[260px]" style={{ color: theme.textSecondary }}>
-                            {status === 'connecting' ? 'Establishing secure connection' : status === 'connected' ? 'Share the room key with a friend to start chatting' : 'Connection lost, please try again'}
-                        </p>
-
-                        {/* Connection Badge */}
-                        {status === 'connected' && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="px-5 py-2.5 rounded-2xl flex items-center gap-2 mb-6 transition-colors"
-                                style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, backdropFilter: 'blur(20px)' }}
-                            >
-                                <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-                                <span className="text-sm font-medium transition-colors" style={{ color: theme.textPrimary }}>Encrypted & Listening</span>
-                            </motion.div>
-                        )}
-
-                        {/* Helpful Tips */}
-                        <div className="w-full max-w-sm p-5 rounded-3xl mt-4 transition-colors" style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, backdropFilter: 'blur(20px)' }}>
-                            <div className="text-xs font-bold uppercase tracking-widest mb-4 transition-colors" style={{ color: theme.textSecondary }}>Quick Tips</div>
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors" style={{ background: theme.iconBg }}>
-                                        <span className="text-base">🔒</span>
-                                    </div>
-                                    <span className="text-sm transition-colors" style={{ color: theme.textPrimary }}>Messages are end-to-end encrypted</span>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors" style={{ background: theme.iconBg }}>
-                                        <span className="text-base">👥</span>
-                                    </div>
-                                    <span className="text-sm transition-colors" style={{ color: theme.textPrimary }}>Both users must enter the same room key</span>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors" style={{ background: theme.iconBg }}>
-                                        <span className="text-base">💨</span>
-                                    </div>
-                                    <span className="text-sm transition-colors" style={{ color: theme.textPrimary }}>Messages vanish when you close the app</span>
-                                </div>
+            {peers.map(peer => (
+                <div key={peer.id} className="inline-flex flex-col items-center mr-4" onClick={() => onSelectChat({ id: peer.id, name: peer.user })}>
+                    <div className="w-16 h-16 rounded-full p-[2px]" style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6, #6366f1, #0ea5e9)' }}>
+                        <div className="w-full h-full rounded-full p-[2px]" style={{ background: 'rgba(255, 255, 255, 0.9)' }}>
+                            <div className="w-full h-full rounded-full flex items-center justify-center text-lg font-semibold cursor-pointer" style={{ background: 'rgba(59, 130, 246, 0.08)', color: 'rgba(0, 0, 0, 0.7)' }}>
+                                {(peer.user || '?')[0].toUpperCase()}
                             </div>
                         </div>
                     </div>
-                )}
+                    <span className="text-xs mt-1" style={{ color: 'rgba(0, 0, 0, 0.7)' }}>{peer.user}</span>
+                </div>
+            ))}
+        </div>
 
-                {peers.map(peer => (
-                    <button
-                        key={peer.id}
-                        onClick={() => onSelectChat({ id: peer.id, name: peer.user })}
-                        className="w-full px-6 py-4 flex items-center gap-4 transition-colors"
-                        style={{ background: 'transparent' }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = isDarkTheme ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                        <div className="w-16 h-16 rounded-full flex items-center justify-center font-bold text-xl relative transition-colors duration-500" style={{ background: theme.iconBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}>
-                            {(peer.user || '?')[0].toUpperCase()}
-                            <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-[3px]" style={{ borderColor: theme.bgSolid }}></div>
+        {/* Messages List */}
+        <div className="flex-1 overflow-y-auto">
+            <div className="px-4 py-2 flex justify-between items-center">
+                <h3 className="font-bold text-base" style={{ color: 'rgba(0, 0, 0, 0.85)' }}>Messages</h3>
+                <span className="text-[#0095F6] text-sm font-semibold">Requests</span>
+            </div>
+
+            {peers.length === 0 && (
+                <div className="flex flex-col items-center justify-center flex-1 px-6 py-10">
+                    {/* Animated Radar Pulse */}
+                    <div className="relative w-32 h-32 mb-8 flex items-center justify-center">
+                        {/* Outer pulsing rings */}
+                        <div className="absolute inset-0 rounded-full animate-ping opacity-[0.06]" style={{ background: status === 'connected' ? 'rgba(59, 130, 246, 0.5)' : 'rgba(234, 179, 8, 0.5)', animationDuration: '2.5s' }}></div>
+                        <div className="absolute inset-4 rounded-full animate-ping opacity-[0.1]" style={{ background: status === 'connected' ? 'rgba(59, 130, 246, 0.4)' : 'rgba(234, 179, 8, 0.4)', animationDuration: '2s', animationDelay: '0.5s' }}></div>
+                        <div className="absolute inset-8 rounded-full animate-ping opacity-[0.15]" style={{ background: status === 'connected' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(234, 179, 8, 0.3)', animationDuration: '1.5s', animationDelay: '1s' }}></div>
+                        {/* Center icon */}
+                        <div className="relative w-16 h-16 rounded-full flex items-center justify-center z-10" style={{ background: 'rgba(255, 255, 255, 0.6)', border: '1px solid rgba(255, 255, 255, 0.8)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
+                            {status === 'connecting' ? (
+                                <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}>
+                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(234, 179, 8, 0.8)" strokeWidth="2" strokeLinecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                                </motion.div>
+                            ) : status === 'connected' ? (
+                                <motion.div animate={{ scale: [1, 1.15, 1] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}>
+                                    <Send size={26} strokeWidth={1.5} className="-rotate-12" style={{ color: 'rgba(59, 130, 246, 0.8)' }} />
+                                </motion.div>
+                            ) : (
+                                <Phone size={26} style={{ color: 'rgba(0, 0, 0, 0.3)' }} />
+                            )}
                         </div>
-                        <div className="flex-1 text-left">
-                            <h3 className="text-base font-semibold transition-colors" style={{ color: theme.textPrimary }}>{peer.user}</h3>
-                            <div className="text-sm flex items-center gap-1.5 transition-colors" style={{ color: theme.textSecondary }}>
-                                <span>Active now</span>
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]"></span>
+                    </div>
+
+                    {/* Status Text */}
+                    <h3 className="text-lg font-semibold mb-1" style={{ color: 'rgba(0, 0, 0, 0.75)' }}>
+                        {status === 'connecting' ? 'Connecting...' : status === 'connected' ? 'Room is Ready' : 'Disconnected'}
+                    </h3>
+                    <p className="text-sm text-center mb-6" style={{ color: 'rgba(0, 0, 0, 0.35)' }}>
+                        {status === 'connecting' ? 'Establishing secure connection' : status === 'connected' ? 'Share the room key with a friend to start chatting' : 'Connection lost, please try again'}
+                    </p>
+
+                    {/* Connection Badge */}
+                    {status === 'connected' && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="px-4 py-2 rounded-2xl flex items-center gap-2 mb-4"
+                            style={{ background: 'rgba(255, 255, 255, 0.5)', border: '1px solid rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(20px)' }}
+                        >
+                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                            <span className="text-xs font-medium" style={{ color: 'rgba(0, 0, 0, 0.5)' }}>Encrypted & Listening</span>
+                        </motion.div>
+                    )}
+
+                    {/* Helpful Tips */}
+                    <div className="w-full max-w-xs p-4 rounded-2xl mt-2" style={{ background: 'rgba(255, 255, 255, 0.35)', border: '1px solid rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(20px)' }}>
+                        <div className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'rgba(0, 0, 0, 0.3)' }}>Quick Tips</div>
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(59, 130, 246, 0.08)' }}>
+                                    <span className="text-xs">🔒</span>
+                                </div>
+                                <span className="text-xs" style={{ color: 'rgba(0, 0, 0, 0.5)' }}>Messages are end-to-end encrypted</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(59, 130, 246, 0.08)' }}>
+                                    <span className="text-xs">👥</span>
+                                </div>
+                                <span className="text-xs" style={{ color: 'rgba(0, 0, 0, 0.5)' }}>Both users must enter the same room key</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(59, 130, 246, 0.08)' }}>
+                                    <span className="text-xs">💨</span>
+                                </div>
+                                <span className="text-xs" style={{ color: 'rgba(0, 0, 0, 0.5)' }}>Messages vanish when you close the app</span>
                             </div>
                         </div>
-                        <div className="transition-colors" style={{ color: theme.textSecondary }}>
-                            <Camera size={26} strokeWidth={1.5} />
+                    </div>
+                </div>
+            )}
+
+            {peers.map(peer => (
+                <button
+                    key={peer.id}
+                    onClick={() => onSelectChat({ id: peer.id, name: peer.user })}
+                    className="w-full px-4 py-3 flex items-center gap-3 transition-colors"
+                    style={{ background: 'transparent' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                    <div className="w-14 h-14 rounded-full flex items-center justify-center font-bold text-lg relative" style={{ background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(255, 255, 255, 0.5)', color: 'rgba(0, 0, 0, 0.7)' }}>
+                        {(peer.user || '?')[0].toUpperCase()}
+                        <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white"></div>
+                    </div>
+                    <div className="flex-1 text-left">
+                        <h3 className="text-sm font-medium" style={{ color: 'rgba(0, 0, 0, 0.85)' }}>{peer.user}</h3>
+                        <div className="text-sm flex items-center gap-1" style={{ color: 'rgba(0, 0, 0, 0.4)' }}>
+                            <span>Active now</span>
+                            <span className="w-1 h-1 rounded-full bg-green-500"></span>
                         </div>
-                    </button>
-                ))}
-            </div>
-        </motion.div>
-    );
-});
+                    </div>
+                    <div style={{ color: 'rgba(0, 0, 0, 0.3)' }}>
+                        <Camera size={22} strokeWidth={1.5} />
+                    </div>
+                </button>
+            ))}
+        </div>
+    </motion.div>
+));
 
 // --- CONVERSATION VIEW — iOS 26 Liquid Glass ---
 
