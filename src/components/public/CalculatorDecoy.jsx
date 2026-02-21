@@ -107,17 +107,23 @@ const CalculatorDecoy = ({ onLock }) => {
 
     // -- Secret Trigger Mechanism --
     const handleEqualsInteractionStart = useCallback((e) => {
-        e.preventDefault(); // Prevent default touch behavior
+        // e.preventDefault() removed to fix passive event listener warning
         handleEquals();
 
-        // Wait 1.5 seconds. If they are holding it down AND the display shows "2025," trigger the lock.
+        // Wait 1.5 seconds. If they hold the button and the display says "2025," trigger the lock.
         pressTimer.current = setTimeout(() => {
-            setDisplay(prevDisplay => {
-                if (prevDisplay === '2025' || prevDisplay === '2025.') {
-                    if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
-                    onLock();
+            // We use the functional update to read the current state safely,
+            // but we explicitly do NOT call onLock() inside the setDisplay return,
+            // which caused the cross-component setState error.
+            setDisplay(currentDisplay => {
+                if (currentDisplay === '2025' || currentDisplay === '2025.') {
+                    // Defer the parent state update to the end of the event loop
+                    setTimeout(() => {
+                        if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+                        onLock();
+                    }, 0);
                 }
-                return prevDisplay;
+                return currentDisplay;
             });
         }, 1500);
     }, [handleEquals, onLock]);
