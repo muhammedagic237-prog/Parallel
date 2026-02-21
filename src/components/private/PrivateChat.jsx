@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
-import { ArrowLeft, Camera, Phone, Video, Send, Plus, PhoneOff, Mic, MicOff, VideoOff, Clock, Check, CheckCheck, Zap, Smile, Trash2, Image as ImageIcon, MoreVertical, Ban, AlertTriangle, Sun, Moon } from 'lucide-react';
+import { ArrowLeft, Camera, Phone, Video, Send, Plus, PhoneOff, Mic, MicOff, VideoOff, Clock, Check, CheckCheck, Zap, Smile, Trash2, Image as ImageIcon, MoreVertical, Ban, AlertTriangle, Sun, Moon, X } from 'lucide-react';
+// ... preserving other imports
 import { useP2P } from '../../hooks/useP2P';
 import { usePremium } from '../../context/PremiumContext';
 import PremiumStore from '../premium/PremiumStore';
@@ -590,6 +591,20 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
     useEffect(() => {
         endRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, isTyping]);
+
+    // Privacy & Hardware Cleanup: Ensure we never leave the mic "Hot" on unmount
+    useEffect(() => {
+        return () => {
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                try {
+                    mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+                } catch (e) { /* ignore */ }
+            }
+            if (recordingTimerRef.current) {
+                clearInterval(recordingTimerRef.current);
+            }
+        };
+    }, []);
 
     const lastSentIdx = messages.reduce((acc, m, i) => m.isMe ? i : acc, -1);
 
