@@ -315,110 +315,129 @@ export const useP2P = (roomId, username) => {
         const init = async () => {
             setStatus('connecting');
 
-            // 1. Generate Keys (FRESH every time for security — keys are ephemeral)
-            myKeyPair.current = await generateKeyPair();
-            const exportedPublicKey = await exportKey(myKeyPair.current.publicKey);
-
-            // 2. Init PeerJS — Generate a FRESH ID every session
-            // We generate new IDs to match new crypto keys. Old ghosts are cleaned by heartbeat timeout.
-            // Using a strict alphanumeric random ID to prevent PeerJS server rejection from spaces/emojis in names.
-            const id = `pui_${Math.random().toString(36).substring(2, 12)}_${Date.now().toString(36)}`;
-            setMyPeerId(id);
-            myPeerIdRef.current = id;
-
-            const peer = new Peer(id, {
-                debug: 0,
-                config: {
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:global.stun.twilio.com:3478' },
-                        { urls: 'stun:stun1.l.google.com:19302' },
-                        { urls: 'stun:stun2.l.google.com:19302' }
-                    ]
+            try {
+                // E2E Encryption requires Secure Context (HTTPS) on iOS/Android
+                if (!window.crypto || !window.crypto.subtle) {
+                    throw new Error("HTTPS Required for End-to-End Encryption. Please use the Vercel URL, not a local IP.");
                 }
-            });
 
-            peerInstance.current = peer;
-            peersRef.current = [];
+                // 1. Generate Keys (FRESH every time for security — keys are ephemeral)
+                myKeyPair.current = await generateKeyPair();
+                const exportedPublicKey = await exportKey(myKeyPair.current.publicKey);
 
-            peer.on('open', async (openedId) => {
-                if (destroyed) return;
-                console.log(`[P2P] PeerJS OPEN: ${openedId}`);
-                setStatus('connected');
+                // 2. Init PeerJS — Generate a FRESH ID every session
+                // Using a strict alphanumeric random ID to prevent PeerJS server rejection from spaces/emojis in names.
+                const id = `pui_${Math.random().toString(36).substring(2, 12)}_${Date.now().toString(36)}`;
+                setMyPeerId(id);
+                myPeerIdRef.current = id;
 
-                // 3. Join Room (register in Firestore)
-                await joinRoom(roomId, openedId, {
-                    user: username,
-                    key: JSON.stringify(exportedPublicKey)
+                const peer = new Peer(id, {
+                    debug: 0,
+                    secure: true,
+                    config: {
+                        iceServers: [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'stun:global.stun.twilio.com:3478' },
+                            { urls: 'stun:stun1.l.google.com:19302' },
+                            { urls: 'stun:stun2.l.google.com:19302' }
+                        ]
+                    }
                 });
 
-                // 4. Start Heartbeat (keeps us "alive" in Firestore)
-                if (heartbeatRef.current) clearInterval(heartbeatRef.current);
-                heartbeatRef.current = setInterval(() => {
-                    if (!destroyed) {
-                        updateHeartbeat(roomId, openedId);
+                peerInstance.current = peer;
+                peersRef.current = [];
+
+                // Connection Timeout Trap — if PeerJS server doesn't respond in 15s, throw error
+                const connectionTimeout = setTimeout(() => {
+                    if (peerInstance.current && !peerInstance.current.open && status !== 'connected') {
+                        console.error('[P2P] Connection to PeerJS signaling server timed out.');
+                        setStatus('error');
                     }
-                }, 10000);
+                }, 15000);
 
-                // 5. Subscribe to room peers
-                unsubscribeFirestore = subscribeToRoom(roomId, (roomPeers) => {
+                peer.on('open', async (openedId) => {
+                    clearTimeout(connectionTimeout);
                     if (destroyed) return;
+                    console.log(`[P2P] PeerJS OPEN: ${openedId}`);
+                    setStatus('connected');
 
-                    const others = roomPeers.filter(p => p.id !== openedId);
-                    setPeers(others);
-                    peersRef.current = others;
+                    // 3. Join Room (register in Firestore)
+                    await joinRoom(roomId, openedId, {
+                        user: username,
+                        key: JSON.stringify(exportedPublicKey)
+                    });
 
-                    // Connect to any unconnected peers
-                    others.forEach((p) => {
-                        const existing = connections.current[p.id];
-                        if (!existing || !existing.conn || !existing.conn.open) {
-                            connectToPeer(p);
-                        } else if (existing && !existing.sharedSecret) {
-                            // Try to derive key if missing
-                            (async () => {
-                                try {
-                                    const key = await importKey(JSON.parse(p.key));
-                                    existing.sharedSecret = await deriveSharedSecret(myKeyPair.current.privateKey, key);
-                                } catch { /* ignore */ }
-                            })();
+                    // 4. Start Heartbeat (keeps us "alive" in Firestore)
+                    if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+                    heartbeatRef.current = setInterval(() => {
+                        if (!destroyed) {
+                            updateHeartbeat(roomId, openedId);
                         }
+                    }, 10000);
+
+                    // 5. Subscribe to room peers
+                    unsubscribeFirestore = subscribeToRoom(roomId, (roomPeers) => {
+                        if (destroyed) return;
+
+                        const others = roomPeers.filter(p => p.id !== openedId);
+                        setPeers(others);
+                        peersRef.current = others;
+
+                        // Connect to any unconnected peers
+                        others.forEach((p) => {
+                            const existing = connections.current[p.id];
+                            if (!existing || !existing.conn || !existing.conn.open) {
+                                connectToPeer(p);
+                            } else if (existing && !existing.sharedSecret) {
+                                // Try to derive key if missing
+                                (async () => {
+                                    try {
+                                        const key = await importKey(JSON.parse(p.key));
+                                        existing.sharedSecret = await deriveSharedSecret(myKeyPair.current.privateKey, key);
+                                    } catch { /* ignore */ }
+                                })();
+                            }
+                        });
                     });
                 });
-            });
 
-            peer.on('connection', (conn) => handleIncomingConnection(conn));
+                peer.on('connection', (conn) => handleIncomingConnection(conn));
 
-            // VIDEO CALL LISTENER
-            peer.on('call', (call) => {
-                if (destroyed) return;
-                setIncomingCall({ call });
-            });
+                // VIDEO CALL LISTENER
+                peer.on('call', (call) => {
+                    if (destroyed) return;
+                    setIncomingCall({ call });
+                });
 
-            peer.on('error', (err) => {
-                console.error('[P2P] PeerJS error:', err);
-                // If the error is "ID taken" (stale session), generate new ID
-                if (err.type === 'unavailable-id') {
-                    console.log('[P2P] ID taken, will retry with new ID on next init');
-                    setStatus('error');
-                } else if (err.type === 'peer-unavailable') {
-                    // Peer we tried to connect to doesn't exist — this is normal for stale peers
-                    console.warn('[P2P] Peer unavailable (may be offline):', err.message);
-                } else {
-                    setStatus('error');
-                }
-            });
+                peer.on('error', (err) => {
+                    console.error('[P2P] PeerJS error:', err);
+                    // If the error is "ID taken" (stale session), generate new ID
+                    if (err.type === 'unavailable-id') {
+                        console.log('[P2P] ID taken, will retry with new ID on next init');
+                        setStatus('error');
+                    } else if (err.type === 'peer-unavailable') {
+                        // Peer we tried to connect to doesn't exist — this is normal for stale peers
+                        console.warn('[P2P] Peer unavailable (may be offline):', err.message);
+                    } else {
+                        setStatus('error');
+                    }
+                });
 
-            peer.on('disconnected', () => {
-                if (destroyed) return;
-                console.log('[P2P] PeerJS disconnected, attempting reconnect...');
-                setStatus('connecting');
-                // Try to reconnect
-                try {
-                    peer.reconnect();
-                } catch {
-                    setStatus('error');
-                }
-            });
+                peer.on('disconnected', () => {
+                    if (destroyed) return;
+                    console.log('[P2P] PeerJS disconnected, attempting reconnect...');
+                    setStatus('connecting');
+                    // Try to reconnect
+                    try {
+                        peer.reconnect();
+                    } catch {
+                        setStatus('error');
+                    }
+                });
+            } catch (err) {
+                console.error('[P2P] Initialization Error:', err);
+                setStatus('error');
+            }
         };
 
         // Initialize
