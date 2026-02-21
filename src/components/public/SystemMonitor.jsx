@@ -1,10 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Cpu, HardDrive, Wifi, Activity, Smartphone, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Cpu, HardDrive, Wifi, Activity, Smartphone, CheckCircle2, Loader2, ShieldCheck } from 'lucide-react';
 
 const SystemMonitor = ({ onLock }) => {
     const [cpuUse, setCpuUse] = useState(12);
     const [ramUse, setRamUse] = useState(45);
     const [networkPing, setNetworkPing] = useState(24);
+    const [isScanning, setIsScanning] = useState(false);
+    const [scanComplete, setScanComplete] = useState(false);
+
+    const handleScan = () => {
+        setIsScanning(true);
+        setScanComplete(false);
+        setTimeout(() => {
+            setIsScanning(false);
+            setScanComplete(true);
+            setTimeout(() => setScanComplete(false), 3000);
+        }, 2500);
+    };
 
     // Simulate fluctuating stats
     useEffect(() => {
@@ -103,8 +115,24 @@ const SystemMonitor = ({ onLock }) => {
                 </div>
 
                 <div className="text-center pt-4">
-                    <button className="px-6 py-2 bg-blue-50 text-blue-600 rounded-full text-sm font-semibold active:scale-95 transition-transform">
-                        Run Diagnostics
+                    <button
+                        onClick={handleScan}
+                        disabled={isScanning}
+                        className="px-6 py-2 bg-blue-50 text-blue-600 rounded-full text-sm font-semibold active:scale-95 transition-transform disabled:opacity-75 flex items-center justify-center mx-auto gap-2"
+                    >
+                        {isScanning ? (
+                            <>
+                                <Loader2 size={16} className="animate-spin" />
+                                Scanning System...
+                            </>
+                        ) : scanComplete ? (
+                            <>
+                                <ShieldCheck size={16} className="text-green-500" />
+                                All Systems Nominal
+                            </>
+                        ) : (
+                            "Run Diagnostics"
+                        )}
                     </button>
                     <p className="text-[10px] text-gray-400 mt-4 uppercase tracking-widest">Local Device Check Tool</p>
                 </div>

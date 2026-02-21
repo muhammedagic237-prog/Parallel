@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
-import { ArrowLeft, Camera, Phone, Video, Send, Plus, PhoneOff, Mic, MicOff, VideoOff, Clock, Check, CheckCheck, Zap, Smile, Trash2, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Camera, Phone, Video, Send, Plus, PhoneOff, Mic, MicOff, VideoOff, Clock, Check, CheckCheck, Zap, Smile, Trash2, Image as ImageIcon, MoreVertical, Ban, AlertTriangle } from 'lucide-react';
 import { useP2P } from '../../hooks/useP2P';
 import { usePremium } from '../../context/PremiumContext';
 import PremiumStore from '../premium/PremiumStore';
@@ -115,6 +115,7 @@ const PrivateChat = ({ onLock }) => {
                         isTyping={!!p2p.typingPeers[activeChat.id]}
                         onTyping={() => p2p.sendTyping(activeChat.id)}
                         onOpenStore={() => setShowStore(true)}
+                        onWipeAndLock={() => { p2p.panicWipe(); onLock(); }}
                     />
                 ) : (
                     <ChatListView
@@ -417,11 +418,13 @@ const getBubbleRounding = (isMe, isFirstInGroup, isLastInGroup) => {
 
 const REACTIONS = ['❤️', '🔥', '😂', '👍', '😮', '😢'];
 
-const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoCall, isTyping, onTyping, onOpenStore }) => {
+const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoCall, isTyping, onTyping, onOpenStore, onWipeAndLock }) => {
     const [input, setInput] = useState("");
     const [reactionMsg, setReactionMsg] = useState(null);
     const [showStickers, setShowStickers] = useState(false);
     const [showKeyboard, setShowKeyboard] = useState(false);
+    const [showOptions, setShowOptions] = useState(false);
+    const [showReportModal, setShowReportModal] = useState(false);
     const { isPremium } = usePremium();
     const endRef = useRef(null);
     const typingTimeout = useRef(null);
@@ -559,8 +562,64 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
                         <Video size={24} strokeWidth={1.5} className={!isPremium ? "text-blue-500" : ""} style={isPremium ? { color: 'rgba(0, 0, 0, 0.6)' } : {}} />
                         {!isPremium && <div className="absolute -top-1 -right-1 bg-amber-400 rounded-full p-[2px]"><Zap size={8} className="text-black fill-current" /></div>}
                     </button>
+                    <div className="relative">
+                        <button onClick={() => setShowOptions(!showOptions)} className="active:opacity-50 transition-opacity">
+                            <MoreVertical size={24} strokeWidth={1.5} />
+                        </button>
+                        <AnimatePresence>
+                            {showOptions && (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                    className="absolute top-8 right-0 bg-white rounded-xl shadow-xl border border-gray-100 py-1 w-48 z-50 text-sm overflow-hidden flex flex-col"
+                                >
+                                    <button
+                                        onClick={() => { setShowOptions(false); onWipeAndLock(); }}
+                                        className="px-4 py-2.5 flex items-center gap-3 text-red-500 hover:bg-red-50 font-medium transition-colors"
+                                    >
+                                        <Ban size={16} /> Block User
+                                    </button>
+                                    <button
+                                        onClick={() => { setShowOptions(false); setShowReportModal(true); }}
+                                        className="px-4 py-2.5 flex items-center gap-3 text-orange-500 hover:bg-orange-50 font-medium transition-colors"
+                                    >
+                                        <AlertTriangle size={16} /> Report User
+                                    </button>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
             </header>
+
+            {/* Report Modal */}
+            <AnimatePresence>
+                {showReportModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="absolute inset-0 z-50 flex items-center justify-center p-6"
+                        style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(10px)' }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+                            className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col items-center text-center"
+                        >
+                            <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center mb-4">
+                                <AlertTriangle size={32} className="text-orange-500" />
+                            </div>
+                            <h3 className="text-xl font-bold mb-2 text-gray-900">Report Abuse</h3>
+                            <p className="text-sm text-gray-500 mb-6 font-medium">
+                                Because Parallel is an encrypted, zero-knowledge network without central servers, we cannot access your chat logs. <br /><br /> Reporting will immediately sever the P2P connection, purge all local RAM logs, and permanently block this user from your current session to ensure your safety.
+                            </p>
+                            <div className="flex gap-3 w-full">
+                                <button onClick={() => setShowReportModal(false)} className="flex-1 py-3 rounded-full font-semibold text-gray-600 bg-gray-100">Cancel</button>
+                                <button onClick={() => { setShowReportModal(false); onWipeAndLock(); }} className="flex-1 py-3 rounded-full font-semibold text-white bg-orange-500">Report & Wipe</button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Chat Area */}
             <div className="flex-1 overflow-y-auto px-4 pt-4 pb-2" onClick={() => setReactionMsg(null)}>
