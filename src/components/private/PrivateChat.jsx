@@ -183,6 +183,16 @@ const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, r
                 </div>
             </div>
             <div className="flex gap-5 items-center">
+                {/* Theme Toggle Button (Stateless) */}
+                <button
+                    onClick={() => document.body.classList.toggle('dark-theme')}
+                    className="active:scale-90 transition-all text-amber-500"
+                    title="Toggle Dark Theme"
+                >
+                    <Sun size={20} strokeWidth={2} className="icon-sun" />
+                    <Moon size={20} strokeWidth={2} className="icon-moon text-gray-500" />
+                </button>
+
                 {/* Premium Button */}
                 <button
                     onClick={onOpenStore}
@@ -235,27 +245,11 @@ const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, r
             </div>
         </header>
 
-        {/* Search */}
-        <div className="px-4 mt-2 mb-4">
-            <div className="relative">
-                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                    <svg className="w-4 h-4" style={{ color: 'rgba(0, 0, 0, 0.3)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                </div>
-                <input type="text" placeholder="Search" className="w-full py-2.5 pl-10 pr-4 rounded-2xl text-sm outline-none" style={{ background: 'rgba(255, 255, 255, 0.45)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.6)', color: 'rgba(0, 0, 0, 0.8)' }} />
-            </div>
-        </div>
+        {/* Removed Search by User Request */}
 
         {/* Stories / Active Peers */}
         <div className="pl-4 pb-4 overflow-x-auto whitespace-nowrap scrollbar-hide">
-            <div className="inline-flex flex-col items-center mr-4 relative">
-                <div className="w-16 h-16 rounded-full flex items-center justify-center relative" style={{ background: 'rgba(255, 255, 255, 0.35)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
-                    <span className="text-2xl font-bold" style={{ color: 'rgba(0, 0, 0, 0.3)' }}>+</span>
-                    <div className="absolute bottom-0 right-0 bg-blue-500 rounded-full p-0.5">
-                        <Plus size={14} className="text-white" />
-                    </div>
-                </div>
-                <span className="text-xs mt-1" style={{ color: 'rgba(0, 0, 0, 0.4)' }}>Your note</span>
-            </div>
+            {/* Removed 'Your note' by User Request */}
 
             {peers.map(peer => (
                 <div key={peer.id} className="inline-flex flex-col items-center mr-4" onClick={() => onSelectChat({ id: peer.id, name: peer.user })}>
@@ -275,7 +269,6 @@ const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, r
         <div className="flex-1 overflow-y-auto">
             <div className="px-4 py-2 flex justify-between items-center">
                 <h3 className="font-bold text-base" style={{ color: 'rgba(0, 0, 0, 0.85)' }}>Messages</h3>
-                <span className="text-[#0095F6] text-sm font-semibold">Requests</span>
             </div>
 
             {peers.length === 0 && (
