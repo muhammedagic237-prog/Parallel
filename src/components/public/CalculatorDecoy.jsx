@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
+import { Info, X } from 'lucide-react';
 
 const CalculatorDecoy = ({ onLock }) => {
     const [display, setDisplay] = useState('0');
     const [prevValue, setPrevValue] = useState(null);
     const [operator, setOperator] = useState(null);
     const [waitingForNewValue, setWaitingForNewValue] = useState(false);
+    const [showLegal, setShowLegal] = useState(false);
 
     const pressTimer = useRef(null);
 
@@ -149,7 +152,63 @@ const CalculatorDecoy = ({ onLock }) => {
     if (displayLength > 12) fontSize = 'text-4xl';
 
     return (
-        <div className="h-[100dvh] w-full bg-black flex flex-col font-sans select-none overflow-hidden">
+        <div className="h-[100dvh] w-full bg-black flex flex-col font-sans select-none overflow-hidden relative">
+
+            {/* Discreet Info Button for Legal Requirements */}
+            <button
+                onClick={() => setShowLegal(true)}
+                className="absolute top-12 left-6 p-2 text-white/20 hover:text-white/40 transition-colors z-10"
+            >
+                <Info size={20} />
+            </button>
+
+            {/* Legal / Info Modal */}
+            <AnimatePresence>
+                {showLegal && (
+                    <motion.div
+                        initial={{ opacity: 0, y: '100%' }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: '100%' }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                        className="absolute inset-0 z-50 bg-[#1c1c1e] text-white flex flex-col"
+                    >
+                        <header className="flex justify-between items-center p-4 border-b border-white/10 shrink-0">
+                            <h2 className="text-xl font-semibold">About Parallel</h2>
+                            <button onClick={() => setShowLegal(false)} className="p-2 bg-white/10 rounded-full active:bg-white/20 transition-colors">
+                                <X size={20} />
+                            </button>
+                        </header>
+                        <div className="flex-1 overflow-y-auto p-6 space-y-8 text-sm text-gray-300 leading-relaxed font-light">
+                            <section>
+                                <h3 className="text-white font-medium text-lg mb-2">Privacy Policy</h3>
+                                <p className="mb-3">Parallel is designed as a zero-knowledge, local-RAM-only utility. We believe absolute privacy is a fundamental right.</p>
+                                <ul className="list-disc pl-5 space-y-2">
+                                    <li><strong>Zero Data Collection:</strong> We do not collect, store, transmit, or analyze any personally identifiable information (PII), metadata, or analytics.</li>
+                                    <li><strong>No Central Servers:</strong> All peer-to-peer (P2P) connections are established directly between devices. We do not proxy, queue, or log communications on any external servers.</li>
+                                    <li><strong>Volatile Memory Only:</strong> The application operates strictly in the device's Random Access Memory (RAM). No user-generated content (UGC), messages, or connection logs are ever written to the physical storage drive of your device.</li>
+                                    <li><strong>Accountless:</strong> Parallel requires no phone number, email, or account registration to function.</li>
+                                </ul>
+                            </section>
+
+                            <section>
+                                <h3 className="text-white font-medium text-lg mb-2">Terms of Use (EULA)</h3>
+                                <p className="mb-3">By using Parallel, you agree to the following terms regarding User Generated Content (UGC) and acceptable use:</p>
+                                <ul className="list-disc pl-5 space-y-2">
+                                    <li><strong>Zero Tolerance for Abuse:</strong> Parallel maintains a strict zero-tolerance policy for objectionable content, harassment, or abuse.</li>
+                                    <li><strong>User Blocking & Reporting:</strong> Users have the ability to instantly block and report any peer. Because Parallel is decentralized and stateless, triggering a report or block will immediately sever the cryptographic connection, purge the local volatile memory, and permanently lock the session to ensure immediate safety.</li>
+                                    <li><strong>No Content Moderation:</strong> Because Parallel is a mathematically encrypted, direct-socket tool with no data retention, we cannot actively monitor or moderate conversations. You are entirely responsible for the connections you accept and the content you engage with.</li>
+                                </ul>
+                            </section>
+
+                            <div className="pt-8 pb-12 text-center text-xs text-white/30">
+                                Parallel Vault v1.0.0<br />
+                                Designed for absolute digital sovereignty.
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Display Area */}
             <div className={`flex-1 flex items-end justify-end px-6 pb-4 ${fontSize} tracking-tight font-light text-white overflow-hidden break-all`}>
                 {formatDisplay(display)}
