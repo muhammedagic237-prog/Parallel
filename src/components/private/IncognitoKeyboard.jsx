@@ -29,25 +29,13 @@ const LAYOUTS = {
     ],
 };
 
-// Memoized individual key to prevent full keyboard re-render on each press
+const SPECIAL_KEYS = ['SHIFT', 'BACK', 'ENTER', 'SPACE', 'NUM', 'SYM', 'ABC'];
+
 // Module-level flag: once a touch is detected, skip all subsequent mouse events
 let usedTouch = false;
 
-const SPECIAL_KEYS = ['SHIFT', 'BACK', 'ENTER', 'SPACE', 'NUM', 'SYM', 'ABC'];
-
+// Pure, stateless key button — all preview logic is in the parent
 const KeyButton = memo(({ keyVal, isSpecial, isShiftActive, capsLock, onPress, onBackspaceDown, onBackspaceUp }) => {
-    const [showPreview, setShowPreview] = useState(false);
-    const previewTimer = useRef(null);
-
-    const isCharKey = !SPECIAL_KEYS.includes(keyVal);
-
-    const triggerPreview = useCallback(() => {
-        if (!isCharKey) return;
-        setShowPreview(true);
-        clearTimeout(previewTimer.current);
-        previewTimer.current = setTimeout(() => setShowPreview(false), 400);
-    }, [isCharKey]);
-
     const getWidth = () => {
         switch (keyVal) {
             case 'SPACE': return 'flex-[3]';
@@ -87,31 +75,26 @@ const KeyButton = memo(({ keyVal, isSpecial, isShiftActive, capsLock, onPress, o
             : 'rgba(0, 0, 0, 0.04)';
 
     const specialColor = keyVal === 'ENTER' ? 'white' : 'rgba(0, 0, 0, 0.65)';
-
     const isBack = keyVal === 'BACK';
 
-    // Touch handler — fires first on mobile, sets flag to block mouseDown
     const handleTouchStart = useCallback((e) => {
         e.preventDefault();
         usedTouch = true;
-        triggerPreview();
-        onPress(keyVal);
+        onPress(keyVal, e.currentTarget);
         if (isBack) onBackspaceDown();
-    }, [keyVal, onPress, isBack, onBackspaceDown, triggerPreview]);
+    }, [keyVal, onPress, isBack, onBackspaceDown]);
 
     const handleTouchEnd = useCallback((e) => {
         e.preventDefault();
         if (isBack) onBackspaceUp();
     }, [isBack, onBackspaceUp]);
 
-    // Mouse handler — only fires on desktop (skipped if touch already fired)
     const handleMouseDown = useCallback((e) => {
-        if (usedTouch) return; // Touch already handled this
+        if (usedTouch) return;
         e.preventDefault();
-        triggerPreview();
-        onPress(keyVal);
+        onPress(keyVal, e.currentTarget);
         if (isBack) onBackspaceDown();
-    }, [keyVal, onPress, isBack, onBackspaceDown, triggerPreview]);
+    }, [keyVal, onPress, isBack, onBackspaceDown]);
 
     const handleMouseUp = useCallback(() => {
         if (usedTouch) return;
@@ -125,7 +108,7 @@ const KeyButton = memo(({ keyVal, isSpecial, isShiftActive, capsLock, onPress, o
             onMouseDown={handleMouseDown}
             onMouseUp={handleMouseUp}
             onMouseLeave={isBack ? onBackspaceUp : undefined}
-            className={`h-[50px] text-[20px] rounded-[10px] flex items-center justify-center select-none relative ${getWidth()}`}
+            className={`h-[50px] text-[20px] rounded-[10px] flex items-center justify-center select-none ${getWidth()}`}
             style={{
                 background: isSpecial ? specialBg : 'rgba(255, 255, 255, 0.95)',
                 color: isSpecial ? specialColor : 'rgba(0, 0, 0, 0.85)',
@@ -134,47 +117,9 @@ const KeyButton = memo(({ keyVal, isSpecial, isShiftActive, capsLock, onPress, o
                 WebkitTapHighlightColor: 'transparent',
                 touchAction: 'manipulation',
                 userSelect: 'none',
-                overflow: 'visible',
             }}
         >
             {keyContent}
-
-            {/* iOS-style key preview popup */}
-            {showPreview && isCharKey && (
-                <div
-                    className="absolute pointer-events-none z-50 flex items-center justify-center rounded-xl"
-                    style={{
-                        bottom: '115%',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        width: 46,
-                        height: 54,
-                        background: 'rgba(255, 255, 255, 0.97)',
-                        border: '1px solid rgba(0, 0, 0, 0.08)',
-                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08)',
-                        fontSize: 28,
-                        fontWeight: 400,
-                        color: 'rgba(0, 0, 0, 0.9)',
-                    }}
-                >
-                    {keyVal}
-                    {/* Tail pointing down */}
-                    <div
-                        style={{
-                            position: 'absolute',
-                            bottom: -6,
-                            left: '50%',
-                            transform: 'translateX(-50%) rotate(45deg)',
-                            width: 12,
-                            height: 12,
-                            background: 'rgba(255, 255, 255, 0.97)',
-                            border: '1px solid rgba(0, 0, 0, 0.08)',
-                            borderTop: 'none',
-                            borderLeft: 'none',
-                        }}
-                    />
-                </div>
-            )}
         </button>
     );
 });
@@ -188,7 +133,11 @@ const IncognitoKeyboard = memo(({ onKeyPress, onBackspace, onEnter, visible }) =
     const layoutRef = useRef(layout);
     const capsLockRef = useRef(capsLock);
 
-    // Keep refs in sync for use in non-re-rendering callbacks
+    // Preview state — single source of truth, managed only here
+    const [preview, setPreview] = useState(null); // { key, x, y } or null
+    const previewTimer = useRef(null);
+    const keyboardRef = useRef(null);
+
     layoutRef.current = layout;
     capsLockRef.current = capsLock;
 
@@ -196,7 +145,7 @@ const IncognitoKeyboard = memo(({ onKeyPress, onBackspace, onEnter, visible }) =
         backspaceTimer.current = setTimeout(() => {
             backspaceInterval.current = setInterval(() => {
                 onBackspace();
-            }, 50); // Faster repeat for smoother delete
+            }, 50);
         }, 350);
     }, [onBackspace]);
 
@@ -205,8 +154,21 @@ const IncognitoKeyboard = memo(({ onKeyPress, onBackspace, onEnter, visible }) =
         clearInterval(backspaceInterval.current);
     }, []);
 
-    // Single handler using refs to avoid re-render dependency
-    const handleKey = useCallback((key) => {
+    // Key handler — also triggers preview for character keys
+    const handleKey = useCallback((key, element) => {
+        // Show preview for character keys only
+        if (!SPECIAL_KEYS.includes(key) && element && keyboardRef.current) {
+            const keyRect = element.getBoundingClientRect();
+            const kbRect = keyboardRef.current.getBoundingClientRect();
+            setPreview({
+                key,
+                x: keyRect.left - kbRect.left + keyRect.width / 2,
+                y: keyRect.top - kbRect.top,
+            });
+            clearTimeout(previewTimer.current);
+            previewTimer.current = setTimeout(() => setPreview(null), 350);
+        }
+
         switch (key) {
             case 'SHIFT':
                 if (layoutRef.current === 'lower') {
@@ -240,7 +202,6 @@ const IncognitoKeyboard = memo(({ onKeyPress, onBackspace, onEnter, visible }) =
                 break;
             default:
                 onKeyPress(key);
-                // Auto-lowercase after one uppercase letter (unless caps lock)
                 if (layoutRef.current === 'upper' && !capsLockRef.current) {
                     setLayout('lower');
                 }
@@ -255,11 +216,12 @@ const IncognitoKeyboard = memo(({ onKeyPress, onBackspace, onEnter, visible }) =
 
     return (
         <motion.div
+            ref={keyboardRef}
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 28, stiffness: 350 }}
-            className="w-full flex-shrink-0"
+            className="w-full flex-shrink-0 relative"
             style={{
                 background: 'rgba(210, 215, 225, 0.85)',
                 backdropFilter: 'blur(30px) saturate(180%)',
@@ -268,6 +230,42 @@ const IncognitoKeyboard = memo(({ onKeyPress, onBackspace, onEnter, visible }) =
                 paddingBottom: 'env(safe-area-inset-bottom, 8px)',
             }}
         >
+            {/* Single Key Preview Popup — positioned absolutely over the keyboard */}
+            {preview && (
+                <div
+                    className="absolute pointer-events-none z-50 flex items-center justify-center rounded-xl"
+                    style={{
+                        left: preview.x,
+                        top: preview.y - 58,
+                        transform: 'translateX(-50%)',
+                        width: 46,
+                        height: 54,
+                        background: 'rgba(255, 255, 255, 0.97)',
+                        border: '1px solid rgba(0, 0, 0, 0.08)',
+                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08)',
+                        fontSize: 28,
+                        fontWeight: 400,
+                        color: 'rgba(0, 0, 0, 0.9)',
+                    }}
+                >
+                    {preview.key}
+                    <div
+                        style={{
+                            position: 'absolute',
+                            bottom: -6,
+                            left: '50%',
+                            transform: 'translateX(-50%) rotate(45deg)',
+                            width: 12,
+                            height: 12,
+                            background: 'rgba(255, 255, 255, 0.97)',
+                            border: '1px solid rgba(0, 0, 0, 0.08)',
+                            borderTop: 'none',
+                            borderLeft: 'none',
+                        }}
+                    />
+                </div>
+            )}
+
             {/* Privacy Badge */}
             <div className="flex items-center justify-center gap-1.5 py-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
