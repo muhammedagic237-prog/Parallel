@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
 
-
+// Hash PIN with SHA-256 so plaintext is never stored on disk
+const hashPin = async (pin) => {
+    const encoded = new TextEncoder().encode(pin + '_parallel_salt');
+    const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
+    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+};
 
 const AuthGate = ({ onAuthenticated }) => {
-    const [savedPin, setSavedPin] = useState(() => localStorage.getItem('parallel_secret_pin'));
-    const [isSettingPin, setIsSettingPin] = useState(!savedPin);
+    const [savedHash, setSavedHash] = useState(() => localStorage.getItem('parallel_secret_pin'));
+    const [isSettingPin, setIsSettingPin] = useState(() => !localStorage.getItem('parallel_secret_pin'));
     const [pin, setPin] = useState("");
     const [error, setError] = useState(false);
     const [setupStep, setSetupStep] = useState(1);
@@ -27,12 +32,14 @@ const AuthGate = ({ onAuthenticated }) => {
                     } else {
                         if (newPin === firstPin) {
                             if (navigator.vibrate) navigator.vibrate(30);
-                            localStorage.setItem('parallel_secret_pin', newPin);
-                            setSavedPin(newPin);
-                            setIsSettingPin(false);
-                            setPin("");
-                            setFirstPin("");
-                            setSetupStep(1);
+                            hashPin(newPin).then(hash => {
+                                localStorage.setItem('parallel_secret_pin', hash);
+                                setSavedHash(hash);
+                                setIsSettingPin(false);
+                                setPin("");
+                                setFirstPin("");
+                                setSetupStep(1);
+                            });
                         } else {
                             if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
                             setError(true);
@@ -45,16 +52,38 @@ const AuthGate = ({ onAuthenticated }) => {
                         }
                     }
                 } else {
-                    if (newPin === savedPin) {
-                        if (navigator.vibrate) navigator.vibrate(30);
-                        onAuthenticated();
+                    // Migration: old plaintext PINs are 4 chars, new hashes are 64 chars
+                    if (savedHash && savedHash.length <= 4) {
+                        // Legacy plaintext PIN — compare directly, then upgrade to hash
+                        if (newPin === savedHash) {
+                            if (navigator.vibrate) navigator.vibrate(30);
+                            hashPin(newPin).then(hash => {
+                                localStorage.setItem('parallel_secret_pin', hash);
+                                setSavedHash(hash);
+                            });
+                            onAuthenticated();
+                        } else {
+                            if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
+                            setError(true);
+                            setTimeout(() => {
+                                setPin("");
+                                setError(false);
+                            }, 500);
+                        }
                     } else {
-                        if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
-                        setError(true);
-                        setTimeout(() => {
-                            setPin("");
-                            setError(false);
-                        }, 500);
+                        hashPin(newPin).then(hash => {
+                            if (hash === savedHash) {
+                                if (navigator.vibrate) navigator.vibrate(30);
+                                onAuthenticated();
+                            } else {
+                                if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
+                                setError(true);
+                                setTimeout(() => {
+                                    setPin("");
+                                    setError(false);
+                                }, 500);
+                            }
+                        });
                     }
                 }
             }
@@ -68,7 +97,7 @@ const AuthGate = ({ onAuthenticated }) => {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    });
+    }); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
         <div className="h-full w-full flex flex-col items-center justify-center px-8"
@@ -150,6 +179,16 @@ const AuthGate = ({ onAuthenticated }) => {
                     ⌫
                 </button>
             </div>
+
+            {/* Forgot PIN helper — only shown on login, not setup */}
+            {!isSettingPin && (
+                <div className="mt-8 text-center px-6">
+                    <p className="text-[11px] leading-relaxed" style={{ color: 'rgba(0, 0, 0, 0.3)' }}>
+                        <span className="font-semibold" style={{ color: 'rgba(0, 0, 0, 0.4)' }}>Forgot your PIN?</span>
+                        {' '}Delete and reinstall the app to reset. Parallel stores zero data — you won't lose anything.
+                    </p>
+                </div>
+            )}
         </div>
     );
 };

@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
-import { ArrowLeft, Camera, Phone, Video, Send, Plus, PhoneOff, Mic, MicOff, VideoOff, Clock, Check, CheckCheck, Zap, Smile, Trash2, Image as ImageIcon, MoreVertical, Ban, AlertTriangle, Sun, Moon, X } from 'lucide-react';
-// ... preserving other imports
+import { ArrowLeft, Check, CheckCheck, Zap, Smile, Trash2, Image as ImageIcon, MoreVertical, Ban, AlertTriangle, Sun, Moon, X, Camera, ChevronDown } from 'lucide-react';
 import { useP2P } from '../../hooks/useP2P';
 import { usePremium } from '../../context/PremiumContext';
 import PremiumStore from '../premium/PremiumStore';
 import StickerPicker from '../premium/StickerPicker';
 import { emojiToUrl } from '../../utils/emojiToUrl';
 import IncognitoKeyboard from './IncognitoKeyboard';
+import { compressImage } from '../../utils/compressImage';
+import SafeImage from './SafeImage';
 
 const PrivateChat = ({ onLock }) => {
     const [activeChat, setActiveChat] = useState(null);
@@ -16,6 +17,8 @@ const PrivateChat = ({ onLock }) => {
     const [showStore, setShowStore] = useState(false);
 
     const [username, setUsername] = useState("");
+    const [termsAccepted, setTermsAccepted] = useState(false);
+    const [ageConfirmed, setAgeConfirmed] = useState(false);
 
     // P2P Hook
     const p2p = useP2P(setupMode ? null : roomId, setupMode ? null : username);
@@ -31,9 +34,28 @@ const PrivateChat = ({ onLock }) => {
         return () => window.removeEventListener('keyup', handleKeyUp);
     }, []);
 
+    // Auto-navigate to chat when first peer connects (skip the list tap)
+    useEffect(() => {
+        if (!activeChat && p2p.peers.length === 1) {
+            const peer = p2p.peers[0];
+            setActiveChat({ id: peer.id, name: peer.user });
+        }
+    }, [p2p.peers, activeChat]);
+
     const handleConnect = (e) => {
         e.preventDefault();
-        if (roomId && username) setSetupMode(false);
+        if (!roomId || !username) return;
+        const letters = (roomId.match(/[a-zA-Z]/g) || []).length;
+        const numbers = (roomId.match(/[0-9]/g) || []).length;
+        if (letters < 4 || numbers < 3) {
+            alert("Room key must contain at least 4 letters and 3 numbers (in any order).");
+            return;
+        }
+        if (!ageConfirmed || !termsAccepted) {
+            alert("You must confirm your age and accept the Terms of Use to continue.");
+            return;
+        }
+        setSetupMode(false);
     };
 
     // SETUP / LOGIN SCREEN — iOS 26 Liquid Glass
@@ -62,13 +84,21 @@ const PrivateChat = ({ onLock }) => {
                     <h1 className="text-2xl font-light tracking-[0.3em] mt-6" style={{ fontFamily: 'Inter, sans-serif', color: 'rgba(0, 0, 0, 0.8)' }}>PARALLEL</h1>
                 </div>
 
-                <form onSubmit={handleConnect} className="w-full max-w-sm space-y-4">
+                <form onSubmit={handleConnect} autoComplete="off" className="w-full max-w-sm space-y-4">
                     <div className="space-y-3">
                         <input
                             value={username} onChange={e => setUsername(e.target.value)}
                             placeholder="Username"
                             className="w-full p-4 rounded-2xl outline-none text-base transition-colors"
                             style={{ background: 'rgba(255, 255, 255, 0.5)', border: '1px solid rgba(255, 255, 255, 0.7)', color: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
+                            name="p_alias"
+                            data-lpignore="true"
+                            data-1p-ignore
+                            data-form-type="other"
                             autoFocus
                         />
                         <input
@@ -76,10 +106,38 @@ const PrivateChat = ({ onLock }) => {
                             placeholder="Room Key"
                             className="w-full p-4 rounded-2xl outline-none text-base transition-colors"
                             style={{ background: 'rgba(255, 255, 255, 0.5)', border: '1px solid rgba(255, 255, 255, 0.7)', color: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
+                            name="p_rkey"
+                            data-lpignore="true"
+                            data-1p-ignore
+                            data-form-type="other"
                         />
                     </div>
 
-                    <button type="submit" className="w-full p-4 rounded-2xl font-semibold text-base transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                    {/* Apple Compliance: Terms Acceptance & Age Gate */}
+                    <div className="space-y-3 px-1">
+                        <label className="flex items-start gap-3 cursor-pointer select-none">
+                            <input type="checkbox" checked={ageConfirmed} onChange={(e) => setAgeConfirmed(e.target.checked)}
+                                className="mt-0.5 w-5 h-5 rounded accent-blue-500 flex-shrink-0" />
+                            <span className="text-xs leading-relaxed" style={{ color: 'rgba(0, 0, 0, 0.55)' }}>
+                                I confirm I am <strong>at least 17 years old</strong>
+                            </span>
+                        </label>
+                        <label className="flex items-start gap-3 cursor-pointer select-none">
+                            <input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)}
+                                className="mt-0.5 w-5 h-5 rounded accent-blue-500 flex-shrink-0" />
+                            <span className="text-xs leading-relaxed" style={{ color: 'rgba(0, 0, 0, 0.55)' }}>
+                                I agree to the <strong>Terms of Use</strong> and <strong>Privacy Policy</strong> and understand that Parallel has a zero-tolerance policy for objectionable content
+                            </span>
+                        </label>
+                    </div>
+
+                    <button type="submit"
+                        disabled={!termsAccepted || !ageConfirmed}
+                        className="w-full p-4 rounded-2xl font-semibold text-base transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100"
                         style={{ background: 'linear-gradient(135deg, #3b82f6, #6366f1)', color: 'white', boxShadow: '0 8px 24px rgba(59, 130, 246, 0.25)' }}
                     >
                         <span>Enter Parallel</span>
@@ -111,7 +169,7 @@ const PrivateChat = ({ onLock }) => {
                         chat={activeChat}
                         messages={p2p.messages.filter(m => m.peerId === activeChat.id)}
                         onSendMessage={(text, type) => p2p.sendMessage(text, activeChat.id, type)}
-                        onVideoCall={(stream) => p2p.callPeer(activeChat.id, stream)}
+
                         onBack={() => setActiveChat(null)}
                         isTyping={!!p2p.typingPeers[activeChat.id]}
                         onTyping={() => p2p.sendTyping(activeChat.id)}
@@ -126,35 +184,13 @@ const PrivateChat = ({ onLock }) => {
                         onSelectChat={(peer) => setActiveChat(peer)}
                         status={p2p.status}
                         currentUser={username}
-                        retentionEnabled={p2p.retentionEnabled}
-                        onToggleRetention={p2p.toggleRetention}
                         onPanicWipe={() => { p2p.panicWipe(); onLock(); }}
                         onOpenStore={() => setShowStore(true)}
                     />
                 )}
             </AnimatePresence>
 
-            {/* INCOMING CALL MODAL */}
-            {p2p.incomingCall && (
-                <IncomingCallModal
-                    call={p2p.incomingCall}
-                    onAnswer={() => {
-                        navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-                            p2p.answerCall(stream);
-                        }).catch(() => { /* User denied camera */ });
-                    }}
-                    onReject={() => p2p.endCall()}
-                />
-            )}
 
-            {/* ACTIVE CALL OVERLAY */}
-            {p2p.activeCall && (
-                <VideoCallOverlay
-                    call={p2p.activeCall}
-                    remoteStream={p2p.remoteStream}
-                    onEnd={() => p2p.endCall()}
-                />
-            )}
 
             {/* PREMIUM STORE - Global Overlay */}
             <AnimatePresence>
@@ -165,7 +201,7 @@ const PrivateChat = ({ onLock }) => {
 };
 
 // --- CHAT LIST — iOS 26 Liquid Glass ---
-const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, retentionEnabled, onToggleRetention, onPanicWipe, onOpenStore }) => (
+const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, onPanicWipe, onOpenStore }) => (
     <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -212,21 +248,6 @@ const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, r
                     <div className="p-1.5 rounded-lg" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
                         <Trash2 size={16} className="text-red-500" strokeWidth={2} />
                     </div>
-                </button>
-
-                <button
-                    onClick={() => onToggleRetention(!retentionEnabled)}
-                    className={`relative transition-all ${retentionEnabled ? 'text-blue-500' : ''}`}
-                    style={!retentionEnabled ? { color: 'rgba(0, 0, 0, 0.3)' } : {}}
-                    title={retentionEnabled ? '24h Retention ON' : '24h Retention OFF'}
-                >
-                    <Clock size={22} strokeWidth={1.5} />
-                    {retentionEnabled && (
-                        <>
-                            <div className="absolute -top-1.5 -right-2.5 bg-blue-500 text-[7px] font-black text-white px-1 py-0.5 rounded-md leading-none tracking-tight" style={{ boxShadow: '0 0 8px rgba(59, 130, 246, 0.5)' }}>24H</div>
-                            <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-blue-400" style={{ animationDuration: '2s' }}></div>
-                        </>
-                    )}
                 </button>
 
                 {/* Mini Parallel Logo with connection indicator */}
@@ -289,20 +310,22 @@ const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, r
                                 </motion.div>
                             ) : status === 'connected' ? (
                                 <motion.div animate={{ scale: [1, 1.15, 1] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}>
-                                    <Send size={32} strokeWidth={2} className="-rotate-12" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(59, 130, 246, 0.9)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="-rotate-12"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
                                 </motion.div>
+                            ) : status === 'room-full' ? (
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(239, 68, 68, 0.9)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                             ) : (
-                                <Phone size={32} strokeWidth={2} style={{ color: 'rgba(0, 0, 0, 0.4)' }} />
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(0, 0, 0, 0.4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" /><path d="M12 8v4l3 3" /></svg>
                             )}
                         </div>
                     </div>
 
                     {/* Status Text */}
-                    <h3 className="text-lg font-semibold mb-1" style={{ color: 'rgba(0, 0, 0, 0.75)' }}>
-                        {status === 'connecting' ? 'Connecting...' : status === 'connected' ? 'Room is Ready' : 'Disconnected'}
+                    <h3 className="text-lg font-semibold mb-1" style={{ color: status === 'room-full' ? 'rgba(239, 68, 68, 0.85)' : 'rgba(0, 0, 0, 0.75)' }}>
+                        {status === 'connecting' ? 'Connecting...' : status === 'connected' ? 'Room is Ready' : status === 'room-full' ? 'Room is Full' : 'Disconnected'}
                     </h3>
                     <p className="text-sm text-center mb-6" style={{ color: 'rgba(0, 0, 0, 0.35)' }}>
-                        {status === 'connecting' ? 'Establishing secure connection' : status === 'connected' ? 'Share the room key with a friend to start chatting' : 'Connection lost, please try again'}
+                        {status === 'connecting' ? 'Establishing secure connection' : status === 'connected' ? 'Share the room key with a friend to start chatting' : status === 'room-full' ? 'This room already has 2 users. Parallel supports secure 1-on-1 conversations only.' : 'Connection lost, please try again'}
                     </p>
 
                     {/* Connection Badge */}
@@ -411,27 +434,20 @@ const getBubbleRounding = (isMe, isFirstInGroup, isLastInGroup) => {
     }
 };
 
-const REACTIONS = ['❤️', '🔥', '😂', '👍', '😮', '😢'];
 
-const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoCall, isTyping, onTyping, onOpenStore, onWipeAndLock }) => {
+
+const ConversationView = memo(({ chat, onBack, messages, onSendMessage, isTyping, onTyping, onOpenStore, onWipeAndLock }) => {
     const [input, setInput] = useState("");
-    const [reactionMsg, setReactionMsg] = useState(null);
     const [showStickers, setShowStickers] = useState(false);
+
     const [showKeyboard, setShowKeyboard] = useState(false);
     const [showOptions, setShowOptions] = useState(false);
     const [showReportModal, setShowReportModal] = useState(false);
-    const [isRecording, setIsRecording] = useState(false);
-    const [recordingDuration, setRecordingDuration] = useState(0);
     const { isPremium } = usePremium();
     const endRef = useRef(null);
     const typingTimeout = useRef(null);
     const fileInputRef = useRef(null);
     const inputDisplayRef = useRef(null);
-
-    // Audio Recording Refs
-    const mediaRecorderRef = useRef(null);
-    const audioChunksRef = useRef([]);
-    const recordingTimerRef = useRef(null);
 
     // Incognito keyboard handlers
     const handleIncognitoKey = useCallback((key) => {
@@ -455,83 +471,7 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
         if (navigator.vibrate) navigator.vibrate(10);
     }, [input, onSendMessage]);
 
-    // --- Voice Recording Logic ---
-    const startRecording = async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorderRef.current = new MediaRecorder(stream, {
-                // Try to use highly compressed webm/opus if available, fallback to default
-                mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : ''
-            });
-            audioChunksRef.current = [];
 
-            mediaRecorderRef.current.ondataavailable = (event) => {
-                if (event.data.size > 0) {
-                    audioChunksRef.current.push(event.data);
-                }
-            };
-
-            mediaRecorderRef.current.onstop = () => {
-                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-                // Convert to Base64 to send over the WebRTC JSON DataChannel
-                const reader = new FileReader();
-                reader.readAsDataURL(audioBlob);
-                reader.onloadend = () => {
-                    const base64AudioMessage = reader.result;
-                    if (recordingDuration > 0) { // Don't send accidental micro-clicks
-                        onSendMessage(base64AudioMessage, 'audio');
-                    }
-                };
-
-                // Cleanup tracks
-                stream.getTracks().forEach(track => track.stop());
-            };
-
-            mediaRecorderRef.current.start();
-            setIsRecording(true);
-            setRecordingDuration(0);
-            if (navigator.vibrate) navigator.vibrate([15, 30]);
-
-            recordingTimerRef.current = setInterval(() => {
-                setRecordingDuration(prev => {
-                    if (prev >= 59) { // Max 60 seconds forced stop
-                        stopRecording();
-                        return 60;
-                    }
-                    return prev + 1;
-                });
-            }, 1000);
-
-        } catch (err) {
-            console.error("Microphone access denied or failed", err);
-            // Optionally show a toast here in production
-        }
-    };
-
-    const stopRecording = () => {
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-            mediaRecorderRef.current.stop();
-        }
-        setIsRecording(false);
-        if (recordingTimerRef.current) {
-            clearInterval(recordingTimerRef.current);
-        }
-        if (navigator.vibrate) navigator.vibrate([30, 15]);
-    };
-
-    const cancelRecording = () => {
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-            mediaRecorderRef.current.onstop = null; // Prevent sending
-            mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-            mediaRecorderRef.current.stop();
-        }
-        setIsRecording(false);
-        setRecordingDuration(0);
-        if (recordingTimerRef.current) {
-            clearInterval(recordingTimerRef.current);
-        }
-        if (navigator.vibrate) navigator.vibrate(50);
-    };
 
     const handleImagePick = useCallback(() => {
         if (!isPremium) {
@@ -541,42 +481,27 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
         fileInputRef.current?.click();
     }, [isPremium, onOpenStore]);
 
-    const handleFileChange = useCallback((e) => {
+    const handleFileChange = useCallback(async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
         if (!file.type.startsWith('image/')) {
             alert('Only images are supported.');
             return;
         }
-        if (file.size > 2 * 1024 * 1024) {
-            alert('Image must be under 2MB for P2P transfer.');
-            return;
+
+        try {
+            // ALWAYS compress through Canvas — this strips ALL EXIF metadata
+            // (GPS location, camera info, original file size) for privacy.
+            // Target: 800KB max for fast P2P delivery.
+            const compressed = await compressImage(file, 800 * 1024);
+            onSendMessage(compressed, 'image');
+        } catch {
+            alert('Failed to process image. Please try a different photo.');
         }
-        const reader = new FileReader();
-        reader.onload = () => {
-            onSendMessage(reader.result, 'image');
-        };
-        reader.readAsDataURL(file);
         e.target.value = '';
     }, [onSendMessage]);
 
-    const handleVideoCall = useCallback(() => {
-        if (!isPremium) {
-            onOpenStore();
-            return;
-        }
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            alert("Video calls require HTTPS and camera permissions.");
-            return;
-        }
-        try {
-            navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-                onVideoCall(stream);
-            }).catch(() => alert("Camera access required for video calls."));
-        } catch {
-            alert("Video calls are not supported on this device/browser.");
-        }
-    }, [isPremium, onOpenStore, onVideoCall]);
+
 
     const handleSend = useCallback((e) => {
         e.preventDefault();
@@ -586,25 +511,9 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
         if (navigator.vibrate) navigator.vibrate(10);
     }, [input, onSendMessage]);
 
-
-
     useEffect(() => {
         endRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, isTyping]);
-
-    // Privacy & Hardware Cleanup: Ensure we never leave the mic "Hot" on unmount
-    useEffect(() => {
-        return () => {
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-                try {
-                    mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-                } catch { /* ignore */ }
-            }
-            if (recordingTimerRef.current) {
-                clearInterval(recordingTimerRef.current);
-            }
-        };
-    }, []);
 
     const lastSentIdx = messages.reduce((acc, m, i) => m.isMe ? i : acc, -1);
 
@@ -646,41 +555,49 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
                     </div>
                 </div>
                 <div className="flex gap-5 pr-1" style={{ color: 'rgba(0, 0, 0, 0.5)' }}>
-                    <Phone size={22} strokeWidth={1.5} className="opacity-50" />
-                    <button onClick={handleVideoCall} className="relative">
-                        <Video size={24} strokeWidth={1.5} className={!isPremium ? "text-blue-500" : ""} style={isPremium ? { color: 'rgba(0, 0, 0, 0.6)' } : {}} />
-                        {!isPremium && <div className="absolute -top-1 -right-1 bg-amber-400 rounded-full p-[2px]"><Zap size={8} className="text-black fill-current" /></div>}
+                    <button onClick={() => setShowOptions(!showOptions)} className="active:opacity-50 transition-opacity">
+                        <MoreVertical size={24} strokeWidth={1.5} />
                     </button>
-                    <div className="relative">
-                        <button onClick={() => setShowOptions(!showOptions)} className="active:opacity-50 transition-opacity">
-                            <MoreVertical size={24} strokeWidth={1.5} />
-                        </button>
-                        <AnimatePresence>
-                            {showOptions && (
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                                    className="absolute top-8 right-0 bg-white rounded-xl shadow-xl border border-gray-100 py-1 w-48 z-50 text-sm overflow-hidden flex flex-col"
-                                >
-                                    <button
-                                        onClick={() => { setShowOptions(false); onWipeAndLock(); }}
-                                        className="px-4 py-2.5 flex items-center gap-3 text-red-500 hover:bg-red-50 font-medium transition-colors"
-                                    >
-                                        <Ban size={16} /> Block User
-                                    </button>
-                                    <button
-                                        onClick={() => { setShowOptions(false); setShowReportModal(true); }}
-                                        className="px-4 py-2.5 flex items-center gap-3 text-orange-500 hover:bg-orange-50 font-medium transition-colors"
-                                    >
-                                        <AlertTriangle size={16} /> Report User
-                                    </button>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
                 </div>
             </header>
+
+            {/* Options Menu — Full-screen backdrop so it doesn't lag or overlap */}
+            <AnimatePresence>
+                {showOptions && (
+                    <>
+                        {/* Tap-to-dismiss backdrop */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-40"
+                            onClick={() => setShowOptions(false)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: -5 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: -5 }}
+                            transition={{ duration: 0.15 }}
+                            className="fixed top-14 right-4 rounded-2xl shadow-2xl py-1.5 w-52 z-50 overflow-hidden"
+                            style={{ background: 'rgba(255, 255, 255, 0.92)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', border: '1px solid rgba(255, 255, 255, 0.7)' }}
+                        >
+                            <button
+                                onClick={() => { setShowOptions(false); onWipeAndLock(); }}
+                                className="w-full px-4 py-3 flex items-center gap-3 text-red-500 active:bg-red-50 font-medium text-sm transition-colors"
+                            >
+                                <Ban size={17} /> Block User
+                            </button>
+                            <div className="mx-3 h-px" style={{ background: 'rgba(0,0,0,0.06)' }} />
+                            <button
+                                onClick={() => { setShowOptions(false); setShowReportModal(true); }}
+                                className="w-full px-4 py-3 flex items-center gap-3 text-orange-500 active:bg-orange-50 font-medium text-sm transition-colors"
+                            >
+                                <AlertTriangle size={17} /> Report User
+                            </button>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
 
             {/* Report Modal */}
             <AnimatePresence>
@@ -711,7 +628,7 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
             </AnimatePresence>
 
             {/* Chat Area */}
-            <div className="flex-1 overflow-y-auto px-4 pt-4 pb-2" onClick={() => setReactionMsg(null)}>
+            <div className="flex-1 overflow-y-auto px-4 pt-4 pb-2">
                 {/* E2E Banner */}
                 <div className="flex flex-col items-center mb-6 mt-2">
                     <div className="w-20 h-20 rounded-full p-[2px] mb-3" style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6, #6366f1, #0ea5e9)' }}>
@@ -778,32 +695,11 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
                                 )}
 
                                 <div className="relative max-w-[75%]">
-                                    {/* Reaction popup */}
-                                    <AnimatePresence>
-                                        {reactionMsg === msg.id && (
-                                            <motion.div
-                                                initial={{ opacity: 0, scale: 0.5, y: 10 }}
-                                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                exit={{ opacity: 0, scale: 0.5 }}
-                                                className="absolute -top-12 left-1/2 -translate-x-1/2 z-30"
-                                            >
-                                                <div className="rounded-full px-2 py-1.5 flex gap-1 shadow-2xl" style={{ background: 'rgba(255, 255, 255, 0.75)', backdropFilter: 'blur(30px) saturate(200%)', WebkitBackdropFilter: 'blur(30px) saturate(200%)', border: '1px solid rgba(255, 255, 255, 0.7)' }}>
-                                                    {REACTIONS.map(r => (
-                                                        <button key={r} className="hover:scale-125 transition-transform px-0.5 active:scale-90" onClick={(e) => { e.stopPropagation(); setReactionMsg(null); }}>
-                                                            <img src={emojiToUrl(r)} alt={r} width={26} height={26} draggable={false} />
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
+
 
                                     {/* Message Bubble */}
                                     {msg.type === 'sticker' ? (
-                                        <div
-                                            className="hover:scale-110 transition-transform cursor-pointer active:scale-95"
-                                            onDoubleClick={() => setReactionMsg(msg.id)}
-                                        >
+                                        <div className="hover:scale-110 transition-transform cursor-pointer active:scale-95">
                                             <img
                                                 src={emojiToUrl(msg.text)}
                                                 alt={msg.text}
@@ -815,41 +711,18 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
                                         </div>
                                     ) : msg.type === 'image' ? (
                                         <div
-                                            onDoubleClick={() => setReactionMsg(msg.id)}
                                             className={`overflow-hidden cursor-pointer ${bubbleRounding}`}
                                             style={isMe
                                                 ? { border: '2px solid rgba(59, 130, 246, 0.3)', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }
                                                 : { border: '2px solid rgba(255, 255, 255, 0.6)', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }
                                             }
                                         >
-                                            <img src={msg.text} alt="Shared" className="max-w-[260px] max-h-[300px] object-cover" style={{ borderRadius: 'inherit' }} />
-                                        </div>
-                                    ) : msg.type === 'audio' ? (
-                                        <div
-                                            onDoubleClick={() => setReactionMsg(msg.id)}
-                                            className={`
-                                                px-3.5 py-2 text-[15px] leading-[20px] break-words cursor-pointer select-none flex items-center gap-3 w-48 ${bubbleRounding}
-                                            `}
-                                            style={isMe
-                                                ? { background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.75), rgba(99, 102, 241, 0.65))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.25)', color: 'white', boxShadow: '0 4px 16px rgba(59, 130, 246, 0.15)' }
-                                                : { background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.65)', color: 'rgba(0, 0, 0, 0.85)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.04)' }
-                                            }
-                                        >
-                                            <div className={`p-2 rounded-full flex-shrink-0 ${isMe ? 'bg-white/20' : 'bg-blue-500/10'}`}>
-                                                <Mic size={16} className={isMe ? 'text-white' : 'text-blue-500'} />
-                                            </div>
-                                            <audio
-                                                controls
-                                                src={msg.text}
-                                                className="w-full h-8 outline-none custom-audio-player"
-                                                style={{ filter: isMe ? 'invert(1) hue-rotate(180deg) brightness(1.5)' : '' }}
-                                            />
+                                            <SafeImage src={msg.text} alt="Shared" className="max-w-[260px] max-h-[300px] object-cover" style={{ borderRadius: 'inherit' }} />
                                         </div>
                                     ) : (
                                         <div
-                                            onDoubleClick={() => setReactionMsg(msg.id)}
                                             className={`
-                                                px-3.5 py-2 text-[15px] leading-[20px] break-words cursor-pointer select-none ${bubbleRounding}
+                                                px-3.5 py-2 text-[15px] leading-[20px] break-words select-none ${bubbleRounding}
                                             `}
                                             style={isMe
                                                 ? { background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.75), rgba(99, 102, 241, 0.65))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.25)', color: 'white', boxShadow: '0 4px 16px rgba(59, 130, 246, 0.15)' }
@@ -908,18 +781,10 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
 
                 <div
                     className="flex-1 rounded-full h-11 flex items-center px-4 gap-2 cursor-text"
-                    style={{ background: isRecording ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255, 255, 255, 0.5)', border: isRecording ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(255, 255, 255, 0.65)', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}
-                    onClick={() => { if (!isRecording) { setShowKeyboard(true); setShowStickers(false); } }}
+                    style={{ background: 'rgba(255, 255, 255, 0.5)', border: '1px solid rgba(255, 255, 255, 0.65)', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}
+                    onClick={() => { setShowKeyboard(true); setShowStickers(false); }}
                 >
-                    {isRecording ? (
-                        <div className="flex-1 flex items-center gap-3 animate-pulse text-red-500 font-medium text-sm w-full">
-                            <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
-                            Recording... 0:{recordingDuration.toString().padStart(2, '0')}
-                            <button type="button" onClick={cancelRecording} className="ml-auto text-xs opacity-70 hover:opacity-100 flex items-center gap-1">
-                                <X size={14} /> Cancel
-                            </button>
-                        </div>
-                    ) : (
+                    {(
                         <>
                             <div ref={inputDisplayRef} className="flex-1 text-[15px] min-h-[20px] select-none overflow-hidden whitespace-nowrap" style={{ color: input ? 'rgba(0, 0, 0, 0.85)' : 'rgba(0, 0, 0, 0.35)' }}>
                                 {input || 'Message...'}
@@ -930,9 +795,14 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
                             ) : (
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        if (!isPremium) onOpenStore();
-                                        else setShowStickers(!showStickers);
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!isPremium) {
+                                            onOpenStore();
+                                        } else {
+                                            setShowStickers(!showStickers);
+                                            setShowKeyboard(false);
+                                        }
                                     }}
                                     className="flex-shrink-0 active:opacity-50"
                                     style={{ color: 'rgba(0, 0, 0, 0.5)' }}
@@ -944,20 +814,19 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
                     )}
                 </div>
 
-                {/* Microphone / Heart button */}
-                {!input && (
+                {/* Dismiss Keyboard Button */}
+                {showKeyboard && (
                     <button
                         type="button"
-                        onPointerDown={startRecording}
-                        onPointerUp={stopRecording}
-                        onPointerLeave={stopRecording}
-                        onContextMenu={(e) => e.preventDefault()} // prevent context menu on long press
-                        className={`flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-full transition-all touch-none select-none ${isRecording ? 'bg-red-500 text-white scale-110 shadow-lg' : 'bg-transparent text-gray-500 active:scale-95'}`}
-                        style={{ color: !isRecording ? 'rgba(0, 0, 0, 0.5)' : undefined }}
+                        onClick={(e) => { e.stopPropagation(); setShowKeyboard(false); }}
+                        className="h-11 w-11 flex items-center justify-center rounded-full flex-shrink-0 active:scale-90 transition-transform"
+                        style={{ background: 'rgba(0, 0, 0, 0.06)', color: 'rgba(0, 0, 0, 0.4)' }}
+                        title="Hide Keyboard"
                     >
-                        <Mic size={22} strokeWidth={1.5} />
+                        <ChevronDown size={22} strokeWidth={2} />
                     </button>
                 )}
+
             </form>
 
             <AnimatePresence>
@@ -981,92 +850,11 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, onVideoC
                     onEnter={handleIncognitoEnter}
                 />
             </AnimatePresence>
-        </motion.div>
+        </motion.div >
     );
 });
 
 
-// --- VIDEO CALL COMPONENTS — Frosted Glass ---
-const IncomingCallModal = ({ onAnswer, onReject }) => (
-    <motion.div
-        initial={{ y: -100, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-        transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-        className="fixed top-4 left-4 right-4 rounded-3xl p-4 shadow-2xl z-50 flex items-center justify-between"
-        style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', border: '1px solid rgba(255, 255, 255, 0.7)' }}
-    >
-        <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full animate-pulse" style={{ background: 'rgba(59, 130, 246, 0.1)' }} />
-            <div>
-                <h3 className="font-bold" style={{ color: 'rgba(0, 0, 0, 0.85)' }}>Incoming Video Call...</h3>
-                <span className="text-xs" style={{ color: 'rgba(0, 0, 0, 0.35)' }}>Encrypted P2P Connection</span>
-            </div>
-        </div>
-        <div className="flex gap-3">
-            <button onClick={onReject} className="p-3 rounded-full text-white active:scale-90 transition-transform" style={{ background: 'rgba(239, 68, 68, 0.85)' }}><PhoneOff size={20} /></button>
-            <button onClick={onAnswer} className="p-3 rounded-full text-white active:scale-90 transition-transform" style={{ background: 'rgba(34, 197, 94, 0.85)' }}><Video size={20} /></button>
-        </div>
-    </motion.div>
-);
 
-const VideoCallOverlay = ({ call, remoteStream, onEnd }) => {
-    const remoteVideoRef = useRef(null);
-    const localVideoRef = useRef(null);
-    const [muted, setMuted] = useState(false);
-    const [cameraOff, setCameraOff] = useState(false);
-
-    useEffect(() => {
-        if (remoteVideoRef.current && remoteStream) {
-            remoteVideoRef.current.srcObject = remoteStream;
-        }
-        if (localVideoRef.current && call.stream) {
-            localVideoRef.current.srcObject = call.stream;
-        }
-    }, [remoteStream, call.stream]);
-
-    const toggleMute = () => {
-        if (call.stream) {
-            call.stream.getAudioTracks().forEach(track => track.enabled = muted);
-            setMuted(!muted);
-        }
-    };
-
-    const toggleCamera = () => {
-        if (call.stream) {
-            call.stream.getVideoTracks().forEach(track => track.enabled = cameraOff);
-            setCameraOff(!cameraOff);
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 z-50 flex flex-col" style={{ background: '#f0f0f0' }}>
-            {/* Remote Video (Full Screen) */}
-            <div className="flex-1 relative" style={{ background: 'rgba(0, 0, 0, 0.05)' }}>
-                {remoteStream ? (
-                    <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
-                ) : (
-                    <div className="absolute inset-0 flex items-center justify-center" style={{ color: 'rgba(0, 0, 0, 0.35)' }}>Connecting...</div>
-                )}
-
-                {/* Local Video (PiP) */}
-                <div className="absolute top-4 right-4 w-32 h-48 rounded-3xl overflow-hidden shadow-lg" style={{ background: 'rgba(255, 255, 255, 0.5)', border: '2px solid rgba(255, 255, 255, 0.7)' }}>
-                    <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                </div>
-            </div>
-
-            {/* Controls */}
-            <div className="h-24 flex items-center justify-center gap-8 pb-4" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', borderTop: '1px solid rgba(255, 255, 255, 0.6)' }}>
-                <button onClick={toggleMute} className="p-4 rounded-full transition-all active:scale-90" style={muted ? { background: 'rgba(0,0,0,0.8)', color: 'white' } : { background: 'rgba(255,255,255,0.6)', color: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.7)' }}>
-                    {muted ? <MicOff /> : <Mic />}
-                </button>
-                <button onClick={onEnd} className="p-4 rounded-full text-white shadow-lg scale-110 active:scale-95 transition-transform" style={{ background: 'rgba(220, 38, 38, 0.85)', boxShadow: '0 4px 20px rgba(220, 38, 38, 0.3)' }}>
-                    <PhoneOff size={32} />
-                </button>
-                <button onClick={toggleCamera} className="p-4 rounded-full transition-all active:scale-90" style={cameraOff ? { background: 'rgba(0,0,0,0.8)', color: 'white' } : { background: 'rgba(255,255,255,0.6)', color: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.7)' }}>
-                    {cameraOff ? <VideoOff /> : <Video />}
-                </button>
-            </div>
-        </div>
-    );
-};
 
 export default PrivateChat;

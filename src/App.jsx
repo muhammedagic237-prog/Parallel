@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Zap, EyeOff, MessagesSquare, CheckCircle2, ChevronRight, Fingerprint } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
 
 import AuthGate from './components/auth/AuthGate';

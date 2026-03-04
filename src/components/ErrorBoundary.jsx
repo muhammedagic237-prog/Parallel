@@ -10,8 +10,8 @@ class ErrorBoundary extends React.Component {
         return { hasError: true, error };
     }
 
-    componentDidCatch(error, errorInfo) {
-        console.error('[Parallel] Caught error:', error, errorInfo);
+    componentDidCatch() {
+        // Error is displayed in the UI via getDerivedStateFromError
     }
 
     handleReset = () => {
@@ -30,7 +30,7 @@ class ErrorBoundary extends React.Component {
                     </div>
                     <h2 className="text-xl font-bold mb-2" style={{ color: 'rgba(0, 0, 0, 0.85)' }}>Something went wrong</h2>
                     <p className="text-sm text-center mb-6 max-w-xs" style={{ color: 'rgba(0, 0, 0, 0.45)' }}>
-                        An unexpected error occurred. Tap below to recover.
+                        {this.state.error?.message || 'An unexpected error occurred. Tap below to recover.'}
                     </p>
                     <button
                         onClick={this.handleReset}

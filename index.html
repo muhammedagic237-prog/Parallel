@@ -20,6 +20,29 @@
   <link rel="apple-touch-icon"
     href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='5' y='5' width='90' height='90' rx='25' fill='%23000' stroke='%23fff' stroke-width='3'/%3E%3Cline x1='38' y1='15' x2='38' y2='85' stroke='%23fff' stroke-width='4'/%3E%3Cline x1='62' y1='15' x2='62' y2='85' stroke='%23fff' stroke-width='4'/%3E%3C/svg%3E" />
 
+  <!-- Force-kill stale service workers on version change -->
+  <script>
+    (function () {
+      var SW_VERSION = 'v6';
+      var stored = localStorage.getItem('parallel_sw_ver');
+      if (stored !== SW_VERSION) {
+        localStorage.setItem('parallel_sw_ver', SW_VERSION);
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            var promises = regs.map(function (r) { return r.unregister(); });
+            return Promise.all(promises);
+          }).then(function () {
+            return caches.keys();
+          }).then(function (names) {
+            return Promise.all(names.map(function (n) { return caches.delete(n); }));
+          }).then(function () {
+            location.reload();
+          });
+        }
+      }
+    })();
+  </script>
+
   <!-- Polyfills -->
   <script>
     window.global = window;

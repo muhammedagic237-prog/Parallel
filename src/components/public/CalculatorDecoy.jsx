@@ -107,17 +107,11 @@ const CalculatorDecoy = ({ onLock }) => {
 
     // -- Secret Trigger Mechanism --
     const handleEqualsInteractionStart = useCallback(() => {
-        // e.preventDefault() removed to fix passive event listener warning
         handleEquals();
 
-        // Wait 1.5 seconds. If they hold the button and the display says "2025," trigger the lock.
         pressTimer.current = setTimeout(() => {
-            // We use the functional update to read the current state safely,
-            // but we explicitly do NOT call onLock() inside the setDisplay return,
-            // which caused the cross-component setState error.
             setDisplay(currentDisplay => {
                 if (currentDisplay === '2025' || currentDisplay === '2025.') {
-                    // Defer the parent state update to the end of the event loop
                     setTimeout(() => {
                         if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
                         onLock();
@@ -187,28 +181,38 @@ const CalculatorDecoy = ({ onLock }) => {
                         <div className="flex-1 overflow-y-auto p-6 space-y-8 text-sm text-gray-300 leading-relaxed font-light">
                             <section>
                                 <h3 className="text-white font-medium text-lg mb-2">Privacy Policy</h3>
-                                <p className="mb-3">Parallel is designed as a zero-knowledge, local-RAM-only utility. We believe absolute privacy is a fundamental right.</p>
+                                <p className="mb-3">Parallel is designed with privacy as the foundation. We collect the absolute minimum data required to facilitate peer-to-peer connections.</p>
                                 <ul className="list-disc pl-5 space-y-2">
-                                    <li><strong>Zero Data Collection:</strong> We do not collect, store, transmit, or analyze any personally identifiable information (PII), metadata, or analytics.</li>
-                                    <li><strong>No Central Servers:</strong> All peer-to-peer (P2P) connections are established directly between devices. We do not proxy, queue, or log communications on any external servers.</li>
-                                    <li><strong>Volatile Memory Only:</strong> The application operates strictly in the device's Random Access Memory (RAM). No user-generated content (UGC), messages, or connection logs are ever written to the physical storage drive of your device.</li>
-                                    <li><strong>Accountless:</strong> Parallel requires no phone number, email, or account registration to function.</li>
+                                    <li><strong>Signaling Data:</strong> To establish connections, we temporarily store your chosen username, a randomly generated peer ID, and an ephemeral public encryption key in Google Firebase Firestore. This data is automatically deleted when you leave the room or after 15 seconds of inactivity.</li>
+                                    <li><strong>PeerJS Server:</strong> We use PeerJS cloud signaling to negotiate WebRTC connections. PeerJS does not store message content.</li>
+                                    <li><strong>End-to-End Encryption:</strong> All messages are encrypted using ECDH (P-256) + AES-GCM (256-bit). Only sender and recipient can decrypt. We cannot read your messages.</li>
+                                    <li><strong>No Analytics:</strong> We do not use any third-party analytics, tracking, or advertising SDKs.</li>
+                                    <li><strong>Data Deletion:</strong> Signaling data is auto-deleted when you leave. Use Panic Wipe to instantly purge all local data. Contact support@parallelapp.io for additional requests.</li>
+                                    <li><strong>No Account Required:</strong> Parallel requires no phone number, email, or registration.</li>
                                 </ul>
                             </section>
 
                             <section>
                                 <h3 className="text-white font-medium text-lg mb-2">Terms of Use (EULA)</h3>
-                                <p className="mb-3">By using Parallel, you agree to the following terms regarding User Generated Content (UGC) and acceptable use:</p>
+                                <p className="mb-3">By using Parallel, you agree to the following terms:</p>
                                 <ul className="list-disc pl-5 space-y-2">
-                                    <li><strong>Zero Tolerance for Abuse:</strong> Parallel maintains a strict zero-tolerance policy for objectionable content, harassment, or abuse.</li>
-                                    <li><strong>User Blocking & Reporting:</strong> Users have the ability to instantly block and report any peer. Because Parallel is decentralized and stateless, triggering a report or block will immediately sever the cryptographic connection, purge the local volatile memory, and permanently lock the session to ensure immediate safety.</li>
-                                    <li><strong>No Content Moderation:</strong> Because Parallel is a mathematically encrypted, direct-socket tool with no data retention, we cannot actively monitor or moderate conversations. You are entirely responsible for the connections you accept and the content you engage with.</li>
+                                    <li><strong>Zero Tolerance Policy:</strong> Parallel maintains a strict zero-tolerance policy for objectionable content, including hate speech, harassment, bullying, threats, sexually explicit material, content involving minors, and illegal activity.</li>
+                                    <li><strong>Content Filtering:</strong> Parallel employs client-side content filtering to detect and block objectionable material before it is sent.</li>
+                                    <li><strong>User Blocking &amp; Reporting:</strong> You can instantly block and report any peer. This severs the cryptographic connection and purges all local session data.</li>
+                                    <li><strong>User Responsibility:</strong> You are responsible for the content you send and the connections you accept.</li>
+                                    <li><strong>Age Requirement:</strong> You must be at least 17 years old to use Parallel.</li>
                                 </ul>
                             </section>
 
+                            <section>
+                                <h3 className="text-white font-medium text-lg mb-2">Contact</h3>
+                                <p>For support, privacy inquiries, or to report abuse:</p>
+                                <p className="mt-2"><strong className="text-white">Email:</strong> support@parallelapp.io</p>
+                            </section>
+
                             <div className="pt-8 pb-12 text-center text-xs text-white/30">
-                                Parallel Vault v1.0.0<br />
-                                Designed for absolute digital sovereignty.
+                                Parallel v1.0.0<br />
+                                End-to-end encrypted P2P messenger.
                             </div>
                         </div>
                     </motion.div>

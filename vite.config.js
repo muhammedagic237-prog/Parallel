@@ -7,9 +7,26 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      manifest: false, // We already have manifest.json in public/
+      manifest: false,
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        // IMPORTANT: No 'html' in globPatterns — index.html must ALWAYS come from the network
+        // so that cache-busting scripts in the HTML can run and update stale code.
+        globPatterns: ['**/*.{js,css,ico,png,svg}'],
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
+        navigationPreload: true,
+        runtimeCaching: [
+          {
+            // Navigation requests (HTML pages) — always go to network first
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'pages',
+              networkTimeoutSeconds: 3
+            }
+          }
+        ]
       }
     })
   ],

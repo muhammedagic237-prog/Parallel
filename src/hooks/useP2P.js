@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
-import { joinRoom, subscribeToRoom, updateHeartbeat, deletePeer } from '../services/firebase';
+import { joinRoom, subscribeToRoom, updateHeartbeat, deletePeer, cleanupGhostPeers, getRoomPeerCount } from '../services/firebase';
+import { filterMessage } from '../utils/contentFilter';
+import { playMessageSound } from '../utils/notificationSound';
 
 // --- CRYPTO UTILS ---
 const ALGO_ECDH = { name: "ECDH", namedCurve: "P-256" };
@@ -66,79 +68,8 @@ export const useP2P = (roomId, username) => {
     const [peers, setPeers] = useState([]);
     const [messages, setMessages] = useState([]);
     const [myPeerId, setMyPeerId] = useState(null);
-    const [retentionEnabled, setRetentionEnabledState] = useState(false);
     const [typingPeers, setTypingPeers] = useState({});
 
-    // Toggle Retention (RAM Only Mode)
-    const toggleRetention = (enabled) => {
-        setRetentionEnabledState(enabled);
-    };
-
-    // 24h Pruning Interval (RAM Only)
-    useEffect(() => {
-        if (!retentionEnabled) return;
-
-        const interval = setInterval(() => {
-            const now = Date.now();
-            const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
-
-            setMessages(prev => {
-                const valid = prev.filter(msg => (now - msg.timestamp) < TWENTY_FOUR_HOURS);
-                if (valid.length !== prev.length) return valid;
-                return prev;
-            });
-        }, 60 * 1000);
-
-        return () => clearInterval(interval);
-    }, [retentionEnabled]);
-
-    // CALL STATE
-    const [incomingCall, setIncomingCall] = useState(null);
-    const [activeCall, setActiveCall] = useState(null);
-    const [remoteStream, setRemoteStream] = useState(null);
-
-    // --- CALL ACTIONS ---
-    const callPeer = (remoteId, localStream) => {
-        if (!peerInstance.current) return;
-
-        const call = peerInstance.current.call(remoteId, localStream);
-        if (!call) return;
-
-        call.on('stream', (stream) => {
-            setRemoteStream(stream);
-        });
-        call.on('close', () => endCall());
-        call.on('error', () => { });
-
-        setActiveCall({ call, stream: localStream });
-    };
-
-    const answerCall = (localStream) => {
-        if (!incomingCall) return;
-        const { call } = incomingCall;
-
-        call.answer(localStream);
-
-        call.on('stream', (stream) => {
-            setRemoteStream(stream);
-        });
-        call.on('close', () => endCall());
-
-        setActiveCall({ call, stream: localStream });
-        setIncomingCall(null);
-    };
-
-    const endCall = () => {
-        if (activeCall) {
-            activeCall.call.close();
-            activeCall.stream?.getTracks().forEach(track => track.stop());
-        }
-        if (incomingCall) incomingCall.call.close();
-
-        setActiveCall(null);
-        setIncomingCall(null);
-        setRemoteStream(null);
-    };
 
     const connections = useRef({});
     const myKeyPair = useRef(null);
@@ -162,7 +93,7 @@ export const useP2P = (roomId, username) => {
     const setupConnection = async (conn, remoteKey, peerId) => {
         // IMPORTANT: Wait for connection to actually open before setting up
         const onOpen = () => {
-            console.log(`[P2P] Connection OPEN with ${peerId}`);
+            // Connection opened
         };
 
         // If conn is already open, skip waiting
@@ -178,8 +109,8 @@ export const useP2P = (roomId, username) => {
         if (remoteKey) {
             try {
                 connections.current[peerId].sharedSecret = await deriveSharedSecret(myKeyPair.current.privateKey, remoteKey);
-            } catch (err) {
-                console.error(`[P2P] Failed to derive shared secret for ${peerId}:`, err);
+            } catch {
+                // Failed to derive shared secret
             }
         }
 
@@ -206,14 +137,13 @@ export const useP2P = (roomId, username) => {
                         try {
                             const key = await importKey(JSON.parse(peerData.key));
                             entry.sharedSecret = await deriveSharedSecret(myKeyPair.current.privateKey, key);
-                        } catch (err) {
-                            console.error(`[P2P] Key derivation failed for ${peerId}:`, err);
+                        } catch {
+                            // Key derivation failed
                         }
                     }
                 }
 
                 if (!entry.sharedSecret) {
-                    console.warn(`[P2P] No shared secret for ${peerId}, dropping message`);
                     return;
                 }
 
@@ -222,35 +152,33 @@ export const useP2P = (roomId, username) => {
                     try {
                         const msg = JSON.parse(json);
                         addMessage({ ...msg, peerId, isMe: false, status: 'delivered' });
+                        playMessageSound();
                         // Send delivery confirmation back
                         if (entry.conn && entry.conn.open) {
                             entry.conn.send({ type: 'delivered', msgId: msg.id });
                         }
-                    } catch (err) {
-                        console.error(`[P2P] Failed to parse decrypted message:`, err);
+                    } catch {
+                        // Failed to parse decrypted message
                     }
                 }
             }
         });
 
         conn.on('close', () => {
-            console.log(`[P2P] Connection CLOSED with ${peerId}`);
             delete connections.current[peerId];
         });
 
-        conn.on('error', (err) => {
-            console.error(`[P2P] Connection ERROR with ${peerId}:`, err);
+        conn.on('error', () => {
             delete connections.current[peerId];
         });
     };
 
     const handleIncomingConnection = async (conn) => {
         const peerId = conn.peer;
-        console.log(`[P2P] Incoming connection from ${peerId}`);
 
         // If we already have a connection to this peer, close the old one
         if (connections.current[peerId]) {
-            console.log(`[P2P] Replacing existing connection to ${peerId}`);
+
             try {
                 connections.current[peerId].conn.close();
             } catch { /* ignore */ }
@@ -286,21 +214,20 @@ export const useP2P = (roomId, username) => {
         }
 
         try {
-            console.log(`[P2P] Connecting to peer ${remotePeerData.id}...`);
+
             const conn = peer.connect(remotePeerData.id, {
                 metadata: { user: username },
                 reliable: true
             });
 
             if (!conn) {
-                console.error(`[P2P] peer.connect returned null for ${remotePeerData.id}`);
                 return;
             }
 
             const remoteKey = await importKey(JSON.parse(remotePeerData.key));
             await setupConnection(conn, remoteKey, remotePeerData.id);
-        } catch (err) {
-            console.error(`[P2P] Failed to connect to ${remotePeerData.id}:`, err);
+        } catch {
+            // Failed to connect to peer
         }
     };
 
@@ -339,7 +266,23 @@ export const useP2P = (roomId, username) => {
                             { urls: 'stun:stun.l.google.com:19302' },
                             { urls: 'stun:global.stun.twilio.com:3478' },
                             { urls: 'stun:stun1.l.google.com:19302' },
-                            { urls: 'stun:stun2.l.google.com:19302' }
+                            { urls: 'stun:stun2.l.google.com:19302' },
+                            // Free TURN servers for mobile NAT traversal
+                            {
+                                urls: 'turn:a.relay.metered.ca:80',
+                                username: 'e8dd65b92f4ff3e5a',
+                                credential: 'parallel2024'
+                            },
+                            {
+                                urls: 'turn:a.relay.metered.ca:443',
+                                username: 'e8dd65b92f4ff3e5a',
+                                credential: 'parallel2024'
+                            },
+                            {
+                                urls: 'turn:a.relay.metered.ca:443?transport=tcp',
+                                username: 'e8dd65b92f4ff3e5a',
+                                credential: 'parallel2024'
+                            }
                         ]
                     }
                 });
@@ -349,8 +292,7 @@ export const useP2P = (roomId, username) => {
 
                 // Connection Timeout Trap — if PeerJS server doesn't respond in 15s, throw error
                 const connectionTimeout = setTimeout(() => {
-                    if (peerInstance.current && !peerInstance.current.open && status !== 'connected') {
-                        console.error('[P2P] Connection to PeerJS signaling server timed out.');
+                    if (peerInstance.current && !peerInstance.current.open) {
                         setStatus('error');
                     }
                 }, 15000);
@@ -358,10 +300,21 @@ export const useP2P = (roomId, username) => {
                 peer.on('open', async (openedId) => {
                     clearTimeout(connectionTimeout);
                     if (destroyed) return;
-                    console.log(`[P2P] PeerJS OPEN: ${openedId}`);
+
                     setStatus('connected');
 
-                    // 3. Join Room (register in Firestore)
+                    // 3. Clean up any ghost peers with our username (from previous sessions)
+                    await cleanupGhostPeers(roomId, openedId, username);
+
+                    // 3.5 Enforce 2-person room limit
+                    const currentCount = await getRoomPeerCount(roomId);
+                    if (currentCount >= 2) {
+                        setStatus('room-full');
+                        peer.destroy();
+                        return;
+                    }
+
+                    // 4. Join Room (register in Firestore)
                     await joinRoom(roomId, openedId, {
                         user: username,
                         key: JSON.stringify(exportedPublicKey)
@@ -373,13 +326,13 @@ export const useP2P = (roomId, username) => {
                         if (!destroyed) {
                             updateHeartbeat(roomId, openedId);
                         }
-                    }, 10000);
+                    }, 5000);
 
                     // 5. Subscribe to room peers
                     unsubscribeFirestore = subscribeToRoom(roomId, (roomPeers) => {
                         if (destroyed) return;
 
-                        const others = roomPeers.filter(p => p.id !== openedId);
+                        const others = roomPeers.filter(p => p.id !== openedId && p.user !== username);
                         setPeers(others);
                         peersRef.current = others;
 
@@ -403,21 +356,13 @@ export const useP2P = (roomId, username) => {
 
                 peer.on('connection', (conn) => handleIncomingConnection(conn));
 
-                // VIDEO CALL LISTENER
-                peer.on('call', (call) => {
-                    if (destroyed) return;
-                    setIncomingCall({ call });
-                });
-
                 peer.on('error', (err) => {
-                    console.error('[P2P] PeerJS error:', err);
                     // If the error is "ID taken" (stale session), generate new ID
                     if (err.type === 'unavailable-id') {
-                        console.log('[P2P] ID taken, will retry with new ID on next init');
+
                         setStatus('error');
                     } else if (err.type === 'peer-unavailable') {
-                        // Peer we tried to connect to doesn't exist — this is normal for stale peers
-                        console.warn('[P2P] Peer unavailable (may be offline):', err.message);
+                        // Peer we tried to connect to doesn't exist — normal for stale peers
                     } else {
                         setStatus('error');
                     }
@@ -425,7 +370,7 @@ export const useP2P = (roomId, username) => {
 
                 peer.on('disconnected', () => {
                     if (destroyed) return;
-                    console.log('[P2P] PeerJS disconnected, attempting reconnect...');
+
                     setStatus('connecting');
                     // Try to reconnect
                     try {
@@ -435,7 +380,7 @@ export const useP2P = (roomId, username) => {
                     }
                 });
             } catch (err) {
-                console.error('[P2P] Initialization Error:', err);
+
                 setStatus('error');
             }
         };
@@ -491,6 +436,26 @@ export const useP2P = (roomId, username) => {
 
     // Send Message (Direct or Broadcast) — OPTIMISTIC UI
     const sendMessage = async (text, targetPeerId, type = 'text') => {
+        // Apple Guideline 1.2: Filter objectionable content before sending
+        if (type === 'text') {
+            const check = filterMessage(text);
+            if (check.blocked) {
+                // Show filtered notification to sender only — message is never sent
+                const filteredMsg = {
+                    id: Date.now() + Math.random(),
+                    user: username,
+                    text: '⚠️ Message blocked: ' + check.reason,
+                    type: 'system',
+                    timestamp: Date.now(),
+                    isMe: true,
+                    peerId: targetPeerId || 'broadcast',
+                    status: 'filtered'
+                };
+                addMessage(filteredMsg);
+                return;
+            }
+        }
+
         const payload = {
             id: Date.now() + Math.random(),
             user: username,
@@ -534,12 +499,12 @@ export const useP2P = (roomId, username) => {
                     entry.conn.send({ payload: encrypted });
                     return true;
                 } catch (err) {
-                    console.error(`[P2P] Encryption/send failed:`, err);
+
                     return false;
                 }
             }
 
-            console.warn(`[P2P] Failed to send to ${peerId}`);
+
             return false;
         };
 
@@ -553,8 +518,8 @@ export const useP2P = (roomId, username) => {
                     try {
                         const encrypted = await encryptMessage(JSON.stringify(payload), entry.sharedSecret);
                         entry.conn.send({ payload: encrypted });
-                    } catch (err) {
-                        console.error(`[P2P] Broadcast send failed to ${peerId}:`, err);
+                    } catch {
+                        // Broadcast send failed
                     }
                 }
             }
@@ -599,17 +564,7 @@ export const useP2P = (roomId, username) => {
         messages,
         sendMessage,
         myPeerId,
-        // Call Exports
-        callPeer,
-        incomingCall,
-        answerCall,
-        endCall,
-        activeCall,
-        remoteStream,
-        // Retention
-        retentionEnabled,
-        toggleRetention,
-        // WOW Features
+        // Features
         typingPeers,
         sendTyping,
         panicWipe

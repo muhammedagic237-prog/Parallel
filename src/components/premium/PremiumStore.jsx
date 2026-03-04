@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { AnimatePresence } from 'framer-motion';
-import { X, Check, Star, Zap, Image as ImageIcon, Video } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { X, Check, Star, Zap, Image as ImageIcon } from 'lucide-react';
 import { usePremium } from '../../context/PremiumContext';
 import PaymentModal from './PaymentModal';
 
@@ -9,11 +9,6 @@ const PremiumStore = ({ onClose }) => {
     const [showPayment, setShowPayment] = useState(false);
 
     const features = [
-        {
-            icon: <Video className="text-blue-500" size={24} />,
-            title: "HD Video Calls",
-            desc: "Encrypted peer-to-peer video calls."
-        },
         {
             icon: <ImageIcon className="text-cyan-500" size={24} />,
             title: "Image Sharing",
@@ -103,15 +98,12 @@ const PremiumStore = ({ onClose }) => {
                     border: '1px solid rgba(255, 255, 255, 0.6)',
                     backdropFilter: 'blur(20px)',
                 }}>
-                    <div className="absolute top-0 right-0 text-xs font-bold text-white px-3 py-1 rounded-bl-xl" style={{ background: 'linear-gradient(135deg, #3b82f6, #6366f1)' }}>
-                        BEST VALUE
-                    </div>
                     <div className="flex justify-between items-end mb-4">
                         <div>
                             <div className="text-sm font-medium mb-1" style={{ color: 'rgba(0, 0, 0, 0.45)' }}>Monthly Plan</div>
                             <div className="flex items-baseline gap-1">
                                 <span className="text-3xl font-black" style={{ color: 'rgba(0, 0, 0, 0.85)' }}>$4.99</span>
-                                <span className="text-sm line-through" style={{ color: 'rgba(0, 0, 0, 0.3)' }}>$9.99</span>
+                                <span className="text-sm" style={{ color: 'rgba(0, 0, 0, 0.35)' }}>/month</span>
                             </div>
                         </div>
                     </div>
@@ -139,7 +131,7 @@ const PremiumStore = ({ onClose }) => {
                     {isPremium ? "You are Premium!" : "Upgrade Now"}
                 </button>
                 <div className="text-center mt-3">
-                    <span className="text-xs" style={{ color: 'rgba(0, 0, 0, 0.3)' }}>Cancel anytime. Secure payment via Stripe.</span>
+                    <span className="text-xs" style={{ color: 'rgba(0, 0, 0, 0.3)' }}>Cancel anytime. Billed through the App Store.</span>
                 </div>
             </div>
 
