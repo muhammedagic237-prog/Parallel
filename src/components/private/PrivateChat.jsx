@@ -843,7 +843,7 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, isTyping
 
             {/* Footer / Input Bar — Frosted Glass */}
             <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleFileChange} />
-            <form onSubmit={handleSend} className="px-3 py-2 flex items-center gap-2" style={{ background: 'rgba(255, 255, 255, 0.45)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', borderTop: '1px solid rgba(255, 255, 255, 0.5)' }}>
+            <form onSubmit={handleSend} className="px-3 py-2 flex items-center gap-2" style={{ background: 'rgba(255, 255, 255, 0.45)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', borderTop: '1px solid rgba(255, 255, 255, 0.5)', paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
                 <button type="button" onClick={handleImagePick} className="h-11 w-11 flex items-center justify-center rounded-full text-white flex-shrink-0 active:scale-90 transition-transform relative" style={{ background: 'linear-gradient(135deg, #3b82f6, #6366f1)', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)' }}>
                     <ImageIcon size={22} />
 
