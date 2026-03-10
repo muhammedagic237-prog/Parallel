@@ -7,6 +7,10 @@
         text-size-adjust: 100%;
     }
 
+    html, body {
+        background: #c5cfe0;
+    }
+
     body {
         margin: 0;
         padding: 0;

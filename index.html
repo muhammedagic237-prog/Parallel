@@ -23,7 +23,7 @@
   <!-- Force-kill stale service workers on version change -->
   <script>
     (function () {
-      var SW_VERSION = 'v6';
+      var SW_VERSION = 'v7';
       var stored = localStorage.getItem('parallel_sw_ver');
       if (stored !== SW_VERSION) {
         localStorage.setItem('parallel_sw_ver', SW_VERSION);
