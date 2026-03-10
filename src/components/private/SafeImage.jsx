@@ -76,11 +76,12 @@ const SafeImage = memo(({ src, alt, className, style }) => {
                     justifyContent: 'center',
                     minHeight: 100,
                     minWidth: 100,
-                    background: 'rgba(0,0,0,0.05)'
+                    background: 'linear-gradient(90deg, rgba(0,0,0,0.04) 25%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.04) 75%)',
+                    backgroundSize: '200% 100%',
+                    animation: 'shimmer 1.5s infinite ease-in-out',
+                    borderRadius: 'inherit',
                 }}
-            >
-                <span style={{ fontSize: 11, color: 'rgba(0,0,0,0.3)' }}>Loading...</span>
-            </div>
+            />
         );
     }
 

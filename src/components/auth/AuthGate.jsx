@@ -97,7 +97,7 @@ const AuthGate = ({ onAuthenticated }) => {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }); // eslint-disable-line react-hooks/exhaustive-deps
+    });
 
     return (
         <div className="h-full w-full flex flex-col items-center justify-center px-8"

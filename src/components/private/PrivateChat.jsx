@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
-import { ArrowLeft, Check, CheckCheck, Zap, Smile, Trash2, Image as ImageIcon, MoreVertical, Ban, AlertTriangle, Sun, Moon, X, Camera, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Check, CheckCheck, Smile, Trash2, Image as ImageIcon, MoreVertical, Ban, AlertTriangle, Sun, Moon, X, Camera, ChevronDown } from 'lucide-react';
 import { useP2P } from '../../hooks/useP2P';
-import { usePremium } from '../../context/PremiumContext';
-import PremiumStore from '../premium/PremiumStore';
-import StickerPicker from '../premium/StickerPicker';
+import StickerPicker from './StickerPicker';
 import { emojiToUrl } from '../../utils/emojiToUrl';
 import IncognitoKeyboard from './IncognitoKeyboard';
 import { compressImage } from '../../utils/compressImage';
@@ -14,7 +12,7 @@ const PrivateChat = ({ onLock }) => {
     const [activeChat, setActiveChat] = useState(null);
     const [setupMode, setSetupMode] = useState(true);
     const [roomId, setRoomId] = useState("");
-    const [showStore, setShowStore] = useState(false);
+
 
     const [username, setUsername] = useState("");
     const [termsAccepted, setTermsAccepted] = useState(false);
@@ -34,11 +32,13 @@ const PrivateChat = ({ onLock }) => {
         return () => window.removeEventListener('keyup', handleKeyUp);
     }, []);
 
-    // Auto-navigate to chat when first peer connects (skip the list tap)
+    // Auto-navigate to chat when first peer connects — ONLY ONCE
+    const hasAutoNavigated = useRef(false);
     useEffect(() => {
-        if (!activeChat && p2p.peers.length === 1) {
+        if (!hasAutoNavigated.current && !activeChat && p2p.peers.length === 1) {
+            hasAutoNavigated.current = true;
             const peer = p2p.peers[0];
-            setActiveChat({ id: peer.id, name: peer.user });
+            queueMicrotask(() => setActiveChat({ id: peer.id, name: peer.user }));
         }
     }, [p2p.peers, activeChat]);
 
@@ -153,7 +153,7 @@ const PrivateChat = ({ onLock }) => {
     }
 
     return (
-        <div className="h-[100dvh] w-full flex flex-col font-sans overflow-hidden relative">
+        <div className="h-[100dvh] w-full flex flex-col font-sans overflow-hidden relative parallel-container">
             {/* Security Watermark (Visual Deterrent) */}
             <div className="absolute inset-0 pointer-events-none z-0 opacity-[0.02] overflow-hidden flex flex-wrap content-center justify-center select-none">
                 {Array.from({ length: 12 }).map((_, i) => (
@@ -162,7 +162,7 @@ const PrivateChat = ({ onLock }) => {
                     </div>
                 ))}
             </div>
-            <AnimatePresence initial={false} mode="wait">
+            <AnimatePresence initial={false}>
                 {activeChat ? (
                     <ConversationView
                         key="conversation"
@@ -173,7 +173,6 @@ const PrivateChat = ({ onLock }) => {
                         onBack={() => setActiveChat(null)}
                         isTyping={!!p2p.typingPeers[activeChat.id]}
                         onTyping={() => p2p.sendTyping(activeChat.id)}
-                        onOpenStore={() => setShowStore(true)}
                         onWipeAndLock={() => { p2p.panicWipe(); onLock(); }}
                     />
                 ) : (
@@ -185,23 +184,19 @@ const PrivateChat = ({ onLock }) => {
                         status={p2p.status}
                         currentUser={username}
                         onPanicWipe={() => { p2p.panicWipe(); onLock(); }}
-                        onOpenStore={() => setShowStore(true)}
                     />
                 )}
             </AnimatePresence>
 
 
 
-            {/* PREMIUM STORE - Global Overlay */}
-            <AnimatePresence>
-                {showStore && <PremiumStore onClose={() => setShowStore(false)} />}
-            </AnimatePresence>
+
         </div>
     );
 };
 
 // --- CHAT LIST — iOS 26 Liquid Glass ---
-const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, onPanicWipe, onOpenStore }) => (
+const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, onPanicWipe }) => (
     <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -209,7 +204,7 @@ const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, o
         className="flex flex-col h-full"
     >
         {/* Header — Frosted Glass */}
-        <header className="px-4 py-3 flex justify-between items-center sticky top-0 z-10" style={{ background: 'rgba(255, 255, 255, 0.45)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', borderBottom: '1px solid rgba(255, 255, 255, 0.5)' }}>
+        <header className="glass-header px-4 py-3 flex justify-between items-center sticky top-0 z-10" style={{ background: 'rgba(255, 255, 255, 0.45)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', borderBottom: '1px solid rgba(255, 255, 255, 0.5)' }}>
             <div className="flex items-center gap-3">
                 <button onClick={onLock} style={{ color: 'rgba(0, 0, 0, 0.7)' }}>
                     <ArrowLeft size={24} strokeWidth={2} />
@@ -230,14 +225,7 @@ const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, o
                     <Moon size={20} strokeWidth={2} className="icon-moon text-gray-500" />
                 </button>
 
-                {/* Premium Button */}
-                <button
-                    onClick={onOpenStore}
-                    className="text-amber-500 hover:text-amber-400 active:scale-95 transition-all"
-                    title="Premium Store"
-                >
-                    <Zap size={22} className="fill-current" />
-                </button>
+
 
                 {/* Panic Wipe Button */}
                 <button
@@ -266,6 +254,16 @@ const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, o
                 </div>
             </div>
         </header>
+
+        {/* Connection Status Pill */}
+        <div className="flex justify-center py-2" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.3)' }}>
+            <div className="glass-pill flex items-center gap-2 px-3 py-1 rounded-full" style={{ background: 'rgba(255, 255, 255, 0.35)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
+                <div className={`w-2 h-2 rounded-full ${status === 'connected' ? 'bg-green-500' : status === 'connecting' ? 'bg-yellow-500 animate-pulse' : status === 'error' ? 'bg-red-500' : 'bg-gray-400'}`}></div>
+                <span className="text-tertiary text-[10px] font-medium" style={{ color: 'rgba(0, 0, 0, 0.45)' }}>
+                    {status === 'connected' ? 'Encrypted & Connected' : status === 'connecting' ? 'Establishing Secure Link...' : status === 'room-full' ? 'Room Full (2/2)' : status === 'error' ? 'Connection Error' : 'Disconnected'}
+                </span>
+            </div>
+        </div>
 
         {/* Removed Search by User Request */}
 
@@ -372,27 +370,52 @@ const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, o
                 <button
                     key={peer.id}
                     onClick={() => onSelectChat({ id: peer.id, name: peer.user })}
-                    className="w-full px-4 py-3 flex items-center gap-3 transition-colors"
-                    style={{ background: 'transparent' }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    className="chat-row w-full px-4 py-3 flex items-center gap-3 transition-colors active:bg-white/30"
                 >
                     <div className="w-14 h-14 rounded-full flex items-center justify-center font-bold text-lg relative" style={{ background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(255, 255, 255, 0.5)', color: 'rgba(0, 0, 0, 0.7)' }}>
                         {(peer.user || '?')[0].toUpperCase()}
                         <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white"></div>
                     </div>
                     <div className="flex-1 text-left">
-                        <h3 className="text-sm font-medium" style={{ color: 'rgba(0, 0, 0, 0.85)' }}>{peer.user}</h3>
-                        <div className="text-sm flex items-center gap-1" style={{ color: 'rgba(0, 0, 0, 0.4)' }}>
+                        <h3 className="text-primary text-sm font-medium" style={{ color: 'rgba(0, 0, 0, 0.85)' }}>{peer.user}</h3>
+                        <div className="text-tertiary text-sm flex items-center gap-1" style={{ color: 'rgba(0, 0, 0, 0.4)' }}>
                             <span>Active now</span>
                             <span className="w-1 h-1 rounded-full bg-green-500"></span>
                         </div>
                     </div>
-                    <div style={{ color: 'rgba(0, 0, 0, 0.3)' }}>
+                    <div className="text-muted" style={{ color: 'rgba(0, 0, 0, 0.3)' }}>
                         <Camera size={22} strokeWidth={1.5} />
                     </div>
                 </button>
             ))}
+
+            {/* App Info Section — visible when returning from chat */}
+            {peers.length > 0 && (
+                <div className="mt-4 mx-4 mb-6">
+                    <div className="glass-card rounded-2xl p-4" style={{ background: 'rgba(255, 255, 255, 0.35)', border: '1px solid rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(20px)' }}>
+                        <div className="text-muted text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: 'rgba(0, 0, 0, 0.3)' }}>Privacy Status</div>
+                        <div className="space-y-2.5">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                <span className="text-secondary text-xs" style={{ color: 'rgba(0, 0, 0, 0.55)' }}>End-to-end encrypted · AES-256-GCM</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                <span className="text-secondary text-xs" style={{ color: 'rgba(0, 0, 0, 0.55)' }}>RAM-only · Zero disk writes</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                <span className="text-secondary text-xs" style={{ color: 'rgba(0, 0, 0, 0.55)' }}>Peer-to-peer · No server storage</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                <span className="text-secondary text-xs" style={{ color: 'rgba(0, 0, 0, 0.55)' }}>Messages vanish when app closes</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p className="text-muted text-[10px] text-center mt-3 px-4" style={{ color: 'rgba(0, 0, 0, 0.25)' }}>Parallel does not store, log, or transmit your conversations. Everything exists only in device memory.</p>
+                </div>
+            )}
         </div>
     </motion.div>
 ));
@@ -436,18 +459,22 @@ const getBubbleRounding = (isMe, isFirstInGroup, isLastInGroup) => {
 
 
 
-const ConversationView = memo(({ chat, onBack, messages, onSendMessage, isTyping, onTyping, onOpenStore, onWipeAndLock }) => {
+const ConversationView = memo(({ chat, onBack, messages, onSendMessage, isTyping, onTyping, onWipeAndLock }) => {
     const [input, setInput] = useState("");
     const [showStickers, setShowStickers] = useState(false);
 
     const [showKeyboard, setShowKeyboard] = useState(false);
     const [showOptions, setShowOptions] = useState(false);
     const [showReportModal, setShowReportModal] = useState(false);
-    const { isPremium } = usePremium();
+
     const endRef = useRef(null);
     const typingTimeout = useRef(null);
     const fileInputRef = useRef(null);
     const inputDisplayRef = useRef(null);
+    const inputRef = useRef(input);
+
+    // Keep ref in sync — this does NOT trigger re-renders in callbacks
+    useEffect(() => { inputRef.current = input; }, [input]);
 
     // Incognito keyboard handlers
     const handleIncognitoKey = useCallback((key) => {
@@ -464,22 +491,20 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, isTyping
         setInput(prev => prev.slice(0, -1));
     }, []);
 
+    // Stable callback — reads from ref, NOT from state, so it never recreates
     const handleIncognitoEnter = useCallback(() => {
-        if (!input.trim()) return;
-        onSendMessage(input, 'text');
+        const val = inputRef.current;
+        if (!val.trim()) return;
+        onSendMessage(val, 'text');
         setInput("");
         if (navigator.vibrate) navigator.vibrate(10);
-    }, [input, onSendMessage]);
+    }, [onSendMessage]);
 
 
 
     const handleImagePick = useCallback(() => {
-        if (!isPremium) {
-            onOpenStore();
-            return;
-        }
         fileInputRef.current?.click();
-    }, [isPremium, onOpenStore]);
+    }, []);
 
     const handleFileChange = useCallback(async (e) => {
         const file = e.target.files?.[0];
@@ -505,11 +530,12 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, isTyping
 
     const handleSend = useCallback((e) => {
         e.preventDefault();
-        if (!input.trim()) return;
-        onSendMessage(input, 'text');
+        const val = inputRef.current;
+        if (!val.trim()) return;
+        onSendMessage(val, 'text');
         setInput("");
         if (navigator.vibrate) navigator.vibrate(10);
-    }, [input, onSendMessage]);
+    }, [onSendMessage]);
 
     useEffect(() => {
         endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -519,16 +545,17 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, isTyping
 
     return (
         <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-0 flex flex-col z-20"
+            initial={{ x: '100%', opacity: 0.5 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '100%', opacity: 0.5 }}
+            transition={{ type: 'tween', duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
+            className="parallel-container absolute inset-0 flex flex-col z-20"
+            style={{ background: 'inherit' }}
         >
             {/* Header — Frosted Glass */}
-            <header className="px-3 py-2 flex items-center justify-between" style={{ background: 'rgba(255, 255, 255, 0.45)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', borderBottom: '1px solid rgba(255, 255, 255, 0.5)' }}>
+            <header className="glass-header px-3 py-2 flex items-center justify-between" style={{ background: 'rgba(255, 255, 255, 0.45)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', borderBottom: '1px solid rgba(255, 255, 255, 0.5)' }}>
                 <div className="flex items-center gap-3">
-                    <button onClick={onBack} className="active:opacity-50 transition-opacity" style={{ color: 'rgba(0, 0, 0, 0.7)' }}><ArrowLeft size={26} strokeWidth={1.5} /></button>
+                    <button onClick={() => { setShowKeyboard(false); setShowStickers(false); onBack(); }} className="active:opacity-50 transition-opacity" style={{ color: 'rgba(0, 0, 0, 0.7)' }}><ArrowLeft size={26} strokeWidth={1.5} /></button>
                     <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full p-[1.5px]" style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6, #6366f1, #0ea5e9)' }}>
                             <div className="w-full h-full rounded-full flex items-center justify-center" style={{ background: 'rgba(255, 255, 255, 0.9)' }}>
@@ -554,8 +581,18 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, isTyping
                         </div>
                     </div>
                 </div>
-                <div className="flex gap-5 pr-1" style={{ color: 'rgba(0, 0, 0, 0.5)' }}>
-                    <button onClick={() => setShowOptions(!showOptions)} className="active:opacity-50 transition-opacity">
+                <div className="flex gap-3 pr-1 items-center">
+                    {/* Panic Wipe — always visible in chat */}
+                    <button
+                        onClick={onWipeAndLock}
+                        className="active:scale-90 transition-all"
+                        title="Panic Wipe — Erase All & Lock"
+                    >
+                        <div className="p-1.5 rounded-lg" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                            <Trash2 size={16} className="text-red-500" strokeWidth={2} />
+                        </div>
+                    </button>
+                    <button onClick={() => setShowOptions(!showOptions)} className="active:opacity-50 transition-opacity" style={{ color: 'rgba(0, 0, 0, 0.5)' }}>
                         <MoreVertical size={24} strokeWidth={1.5} />
                     </button>
                 </div>
@@ -647,6 +684,17 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, isTyping
                         </svg>
                         <span className="text-[11px]" style={{ color: 'rgba(0, 0, 0, 0.35)' }}>End-to-end encrypted</span>
                     </div>
+                    {messages.length === 0 && (
+                        <motion.p
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.5 }}
+                            className="text-[11px] mt-4 text-center max-w-[240px]"
+                            style={{ color: 'rgba(0, 0, 0, 0.25)' }}
+                        >
+                            Messages exist only in RAM and vanish when you close the app. Say something — it won't last forever.
+                        </motion.p>
+                    )}
                 </div>
 
                 {/* Messages */}
@@ -677,77 +725,94 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, isTyping
                             )}
 
                             <div className={`flex ${isMe ? 'justify-end' : 'justify-start'} ${groupGap} relative group`}>
-                                {/* Left-side Avatar */}
-                                {!isMe && (
-                                    <div className="w-7 h-7 mr-2 flex-shrink-0 self-end">
-                                        {showAvatar ? (
-                                            <div className="w-full h-full rounded-full p-[1px]" style={{ background: 'linear-gradient(135deg, #3b82f6, #6366f1, #0ea5e9)' }}>
-                                                <div className="w-full h-full rounded-full flex items-center justify-center" style={{ background: 'rgba(255, 255, 255, 0.85)' }}>
-                                                    <span className="text-[10px] font-bold uppercase select-none" style={{ color: 'rgba(0, 0, 0, 0.6)' }}>
-                                                        {(msg.user || '?')[0]}
-                                                    </span>
+                                <motion.div
+                                    initial={{ opacity: 0, y: 8, scale: 0.97 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    transition={{ type: 'spring', damping: 25, stiffness: 400 }}
+                                    className={`flex ${isMe ? 'justify-end' : 'justify-start'} w-full`}
+                                >
+                                    {/* Left-side Avatar */}
+                                    {!isMe && (
+                                        <div className="w-7 h-7 mr-2 flex-shrink-0 self-end">
+                                            {showAvatar ? (
+                                                <div className="w-full h-full rounded-full p-[1px]" style={{ background: 'linear-gradient(135deg, #3b82f6, #6366f1, #0ea5e9)' }}>
+                                                    <div className="w-full h-full rounded-full flex items-center justify-center" style={{ background: 'rgba(255, 255, 255, 0.85)' }}>
+                                                        <span className="text-[10px] font-bold uppercase select-none" style={{ color: 'rgba(0, 0, 0, 0.6)' }}>
+                                                            {(msg.user || '?')[0]}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ) : (
-                                            <div className="w-full h-full" />
-                                        )}
-                                    </div>
-                                )}
-
-                                <div className="relative max-w-[75%]">
-
-
-                                    {/* Message Bubble */}
-                                    {msg.type === 'sticker' ? (
-                                        <div className="hover:scale-110 transition-transform cursor-pointer active:scale-95">
-                                            <img
-                                                src={emojiToUrl(msg.text)}
-                                                alt={msg.text}
-                                                width={100}
-                                                height={100}
-                                                draggable={false}
-                                                style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.15))' }}
-                                            />
-                                        </div>
-                                    ) : msg.type === 'image' ? (
-                                        <div
-                                            className={`overflow-hidden cursor-pointer ${bubbleRounding}`}
-                                            style={isMe
-                                                ? { border: '2px solid rgba(59, 130, 246, 0.3)', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }
-                                                : { border: '2px solid rgba(255, 255, 255, 0.6)', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }
-                                            }
-                                        >
-                                            <SafeImage src={msg.text} alt="Shared" className="max-w-[260px] max-h-[300px] object-cover" style={{ borderRadius: 'inherit' }} />
-                                        </div>
-                                    ) : (
-                                        <div
-                                            className={`
-                                                px-3.5 py-2 text-[15px] leading-[20px] break-words select-none ${bubbleRounding}
-                                            `}
-                                            style={isMe
-                                                ? { background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.75), rgba(99, 102, 241, 0.65))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.25)', color: 'white', boxShadow: '0 4px 16px rgba(59, 130, 246, 0.15)' }
-                                                : { background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.65)', color: 'rgba(0, 0, 0, 0.85)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.04)' }
-                                            }
-                                        >
-                                            {msg.text}
-                                        </div>
-                                    )}
-
-                                    {/* Delivery Status */}
-                                    {isMe && isLastInGroup && (
-                                        <div className="flex justify-end mt-0.5 pr-1">
-                                            {idx === lastSentIdx && msg.status === 'delivered' ? (
-                                                <span className="text-[10px] font-normal" style={{ color: 'rgba(0, 0, 0, 0.35)' }}>Seen</span>
-                                            ) : msg.status === 'delivered' ? (
-                                                <CheckCheck size={13} className="text-blue-500" />
-                                            ) : msg.status === 'failed' ? (
-                                                <span className="text-[10px] text-red-500 font-medium">Not sent</span>
                                             ) : (
-                                                <Check size={13} style={{ color: 'rgba(0, 0, 0, 0.25)' }} />
+                                                <div className="w-full h-full" />
                                             )}
                                         </div>
                                     )}
-                                </div>
+
+                                    <div className="relative max-w-[75%]">
+
+
+                                        {/* Message Bubble */}
+                                        {msg.type === 'sticker' ? (
+                                            <motion.div
+                                                initial={{ scale: 0.3, opacity: 0 }}
+                                                animate={{ scale: 1, opacity: 1 }}
+                                                transition={{ type: 'spring', damping: 12, stiffness: 300 }}
+                                                className="hover:scale-110 transition-transform cursor-pointer active:scale-95"
+                                            >
+                                                <img
+                                                    src={emojiToUrl(msg.text)}
+                                                    alt={msg.text}
+                                                    width={100}
+                                                    height={100}
+                                                    draggable={false}
+                                                    style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.15))' }}
+                                                />
+                                            </motion.div>
+                                        ) : msg.type === 'image' ? (
+                                            <div
+                                                className={`overflow-hidden cursor-pointer ${bubbleRounding}`}
+                                                style={isMe
+                                                    ? { border: '2px solid rgba(59, 130, 246, 0.3)', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }
+                                                    : { border: '2px solid rgba(255, 255, 255, 0.6)', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }
+                                                }
+                                            >
+                                                <SafeImage src={msg.text} alt="Shared" className="max-w-[260px] max-h-[300px] object-cover" style={{ borderRadius: 'inherit' }} />
+                                            </div>
+                                        ) : (
+                                            <div
+                                                className={`
+                                                px-3.5 py-2 text-[15px] leading-[20px] break-words select-none ${bubbleRounding}
+                                            `}
+                                                style={isMe
+                                                    ? { background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.75), rgba(99, 102, 241, 0.65))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.25)', color: 'white', boxShadow: '0 4px 16px rgba(59, 130, 246, 0.15)' }
+                                                    : { background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.65)', color: 'rgba(0, 0, 0, 0.85)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.04)' }
+                                                }
+                                            >
+                                                {msg.text}
+                                            </div>
+                                        )}
+
+                                        {/* Delivery Status */}
+                                        {isMe && isLastInGroup && (
+                                            <motion.div
+                                                initial={{ opacity: 0, scale: 0.8 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                transition={{ duration: 0.2 }}
+                                                className="flex justify-end mt-0.5 pr-1"
+                                            >
+                                                {idx === lastSentIdx && msg.status === 'delivered' ? (
+                                                    <span className="text-[10px] font-normal" style={{ color: 'rgba(0, 0, 0, 0.35)' }}>Seen</span>
+                                                ) : msg.status === 'delivered' ? (
+                                                    <CheckCheck size={13} className="text-blue-500" />
+                                                ) : msg.status === 'failed' ? (
+                                                    <span className="text-[10px] text-red-500 font-medium">Not sent</span>
+                                                ) : (
+                                                    <Check size={13} style={{ color: 'rgba(0, 0, 0, 0.25)' }} />
+                                                )}
+                                            </motion.div>
+                                        )}
+                                    </div>
+                                </motion.div>
                             </div>
                         </React.Fragment>
                     );
@@ -755,18 +820,23 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, isTyping
 
                 {/* Typing Indicator */}
                 {isTyping && (
-                    <div className="flex justify-start mt-2 mb-1">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className="flex justify-start mt-2 mb-1"
+                    >
                         <div className="w-7 h-7 rounded-full mr-2 flex-shrink-0 self-end flex items-center justify-center" style={{ background: 'rgba(255, 255, 255, 0.45)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
                             <span className="text-[10px] font-bold uppercase" style={{ color: 'rgba(0, 0, 0, 0.6)' }}>{(chat.name || '?')[0]}</span>
                         </div>
                         <div className="rounded-[22px] rounded-bl-md px-4 py-3" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.65)' }}>
-                            <div className="flex gap-1">
-                                <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: 'rgba(0, 0, 0, 0.3)', animationDelay: '0ms' }}></span>
-                                <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: 'rgba(0, 0, 0, 0.3)', animationDelay: '150ms' }}></span>
-                                <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: 'rgba(0, 0, 0, 0.3)', animationDelay: '300ms' }}></span>
+                            <div className="flex gap-1 items-center" style={{ height: 16 }}>
+                                <span className="w-2 h-2 rounded-full typing-dot" style={{ background: 'rgba(0, 0, 0, 0.3)', animationDelay: '0ms' }}></span>
+                                <span className="w-2 h-2 rounded-full typing-dot" style={{ background: 'rgba(0, 0, 0, 0.3)', animationDelay: '160ms' }}></span>
+                                <span className="w-2 h-2 rounded-full typing-dot" style={{ background: 'rgba(0, 0, 0, 0.3)', animationDelay: '320ms' }}></span>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
                 )}
                 <div ref={endRef} />
             </div>
@@ -776,7 +846,7 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, isTyping
             <form onSubmit={handleSend} className="px-3 py-2 flex items-center gap-2" style={{ background: 'rgba(255, 255, 255, 0.45)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', borderTop: '1px solid rgba(255, 255, 255, 0.5)' }}>
                 <button type="button" onClick={handleImagePick} className="h-11 w-11 flex items-center justify-center rounded-full text-white flex-shrink-0 active:scale-90 transition-transform relative" style={{ background: 'linear-gradient(135deg, #3b82f6, #6366f1)', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)' }}>
                     <ImageIcon size={22} />
-                    {!isPremium && <div className="absolute -top-1 -right-1 bg-amber-400 rounded-full p-[2px]"><Zap size={8} className="text-black fill-current" /></div>}
+
                 </button>
 
                 <div
@@ -797,12 +867,8 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, isTyping
                                     type="button"
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        if (!isPremium) {
-                                            onOpenStore();
-                                        } else {
-                                            setShowStickers(!showStickers);
-                                            setShowKeyboard(false);
-                                        }
+                                        setShowStickers(!showStickers);
+                                        setShowKeyboard(false);
                                     }}
                                     className="flex-shrink-0 active:opacity-50"
                                     style={{ color: 'rgba(0, 0, 0, 0.5)' }}

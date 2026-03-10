@@ -379,7 +379,7 @@ export const useP2P = (roomId, username) => {
                         setStatus('error');
                     }
                 });
-            } catch (err) {
+            } catch {
 
                 setStatus('error');
             }
@@ -498,7 +498,7 @@ export const useP2P = (roomId, username) => {
                     const encrypted = await encryptMessage(JSON.stringify(payload), entry.sharedSecret);
                     entry.conn.send({ payload: encrypted });
                     return true;
-                } catch (err) {
+                } catch {
 
                     return false;
                 }
@@ -513,7 +513,7 @@ export const useP2P = (roomId, username) => {
             updateStatus(success ? 'sent' : 'failed');
         } else {
             const entries = Object.entries(connections.current);
-            for (const [peerId, entry] of entries) {
+            for (const [, entry] of entries) {
                 if (entry.conn && entry.conn.open && entry.sharedSecret) {
                     try {
                         const encrypted = await encryptMessage(JSON.stringify(payload), entry.sharedSecret);

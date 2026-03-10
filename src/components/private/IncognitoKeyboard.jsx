@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, memo } from 'react';
+import React, { useState, useCallback, useRef, useEffect, memo } from 'react';
 import { motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
 import { Delete, ArrowBigUp } from 'lucide-react';
 
@@ -133,13 +133,16 @@ const IncognitoKeyboard = memo(({ onKeyPress, onBackspace, onEnter, visible }) =
     const layoutRef = useRef(layout);
     const capsLockRef = useRef(capsLock);
 
-    // Preview state — single source of truth, managed only here
-    const [preview, setPreview] = useState(null); // { key, x, y } or null
+    // Preview via direct DOM — NO React state, NO re-renders on keypress
     const previewTimer = useRef(null);
+    const previewRef = useRef(null);
+    const previewTextRef = useRef(null);
     const keyboardRef = useRef(null);
 
-    layoutRef.current = layout;
-    capsLockRef.current = capsLock;
+    useEffect(() => {
+        layoutRef.current = layout;
+        capsLockRef.current = capsLock;
+    }, [layout, capsLock]);
 
     const startBackspaceHold = useCallback(() => {
         backspaceTimer.current = setTimeout(() => {
@@ -156,17 +159,17 @@ const IncognitoKeyboard = memo(({ onKeyPress, onBackspace, onEnter, visible }) =
 
     // Key handler — also triggers preview for character keys
     const handleKey = useCallback((key, element) => {
-        // Show preview for character keys only
-        if (!SPECIAL_KEYS.includes(key) && element && keyboardRef.current) {
+        // Show preview via direct DOM manipulation — zero re-renders
+        if (!SPECIAL_KEYS.includes(key) && element && keyboardRef.current && previewRef.current) {
             const keyRect = element.getBoundingClientRect();
             const kbRect = keyboardRef.current.getBoundingClientRect();
-            setPreview({
-                key,
-                x: keyRect.left - kbRect.left + keyRect.width / 2,
-                y: keyRect.top - kbRect.top,
-            });
+            const el = previewRef.current;
+            el.style.left = (keyRect.left - kbRect.left + keyRect.width / 2) + 'px';
+            el.style.top = (keyRect.top - kbRect.top - 58) + 'px';
+            el.style.display = 'flex';
+            if (previewTextRef.current) previewTextRef.current.textContent = key;
             clearTimeout(previewTimer.current);
-            previewTimer.current = setTimeout(() => setPreview(null), 350);
+            previewTimer.current = setTimeout(() => { el.style.display = 'none'; }, 120);
         }
 
         switch (key) {
@@ -230,41 +233,39 @@ const IncognitoKeyboard = memo(({ onKeyPress, onBackspace, onEnter, visible }) =
                 paddingBottom: 'env(safe-area-inset-bottom, 8px)',
             }}
         >
-            {/* Single Key Preview Popup — positioned absolutely over the keyboard */}
-            {preview && (
+            {/* Key Preview Popup — ref-based, never re-renders */}
+            <div
+                ref={previewRef}
+                className="absolute pointer-events-none z-50 items-center justify-center rounded-xl"
+                style={{
+                    display: 'none',
+                    transform: 'translateX(-50%)',
+                    width: 46,
+                    height: 54,
+                    background: 'rgba(255, 255, 255, 0.97)',
+                    border: '1px solid rgba(0, 0, 0, 0.08)',
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08)',
+                    fontSize: 28,
+                    fontWeight: 400,
+                    color: 'rgba(0, 0, 0, 0.9)',
+                }}
+            >
+                <span ref={previewTextRef}></span>
                 <div
-                    className="absolute pointer-events-none z-50 flex items-center justify-center rounded-xl"
                     style={{
-                        left: preview.x,
-                        top: preview.y - 58,
-                        transform: 'translateX(-50%)',
-                        width: 46,
-                        height: 54,
+                        position: 'absolute',
+                        bottom: -6,
+                        left: '50%',
+                        transform: 'translateX(-50%) rotate(45deg)',
+                        width: 12,
+                        height: 12,
                         background: 'rgba(255, 255, 255, 0.97)',
                         border: '1px solid rgba(0, 0, 0, 0.08)',
-                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08)',
-                        fontSize: 28,
-                        fontWeight: 400,
-                        color: 'rgba(0, 0, 0, 0.9)',
+                        borderTop: 'none',
+                        borderLeft: 'none',
                     }}
-                >
-                    {preview.key}
-                    <div
-                        style={{
-                            position: 'absolute',
-                            bottom: -6,
-                            left: '50%',
-                            transform: 'translateX(-50%) rotate(45deg)',
-                            width: 12,
-                            height: 12,
-                            background: 'rgba(255, 255, 255, 0.97)',
-                            border: '1px solid rgba(0, 0, 0, 0.08)',
-                            borderTop: 'none',
-                            borderLeft: 'none',
-                        }}
-                    />
-                </div>
-            )}
+                />
+            </div>
 
             {/* Privacy Badge */}
             <div className="flex items-center justify-center gap-1.5 py-1.5">
