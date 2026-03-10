@@ -850,16 +850,16 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, isTyping
                 </button>
 
                 <div
-                    className="flex-1 min-w-0 rounded-full h-11 flex items-center px-4 gap-2 cursor-text"
+                    className="flex-1 min-w-0 rounded-[22px] min-h-[44px] flex items-end px-4 py-2.5 gap-2 cursor-text"
                     style={{ background: 'rgba(255, 255, 255, 0.5)', border: '1px solid rgba(255, 255, 255, 0.65)', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}
                     onClick={() => { setShowKeyboard(true); setShowStickers(false); }}
                 >
-                    <div ref={inputDisplayRef} className="flex-1 min-w-0 text-[15px] min-h-[20px] select-none overflow-hidden whitespace-nowrap text-ellipsis" style={{ color: input ? 'rgba(0, 0, 0, 0.85)' : 'rgba(0, 0, 0, 0.35)' }}>
+                    <div ref={inputDisplayRef} className="flex-1 min-w-0 text-[15px] min-h-[20px] max-h-[120px] select-none overflow-y-auto break-words whitespace-pre-wrap scrollbar-hide" style={{ color: input ? 'rgba(0, 0, 0, 0.85)' : 'rgba(0, 0, 0, 0.35)', wordBreak: 'break-word' }}>
                         {input || 'Message...'}
                         {showKeyboard && <span className="inline-block w-[2px] h-[18px] bg-blue-500 ml-[1px] align-text-bottom animate-pulse" />}
                     </div>
                     {input ? (
-                        <button type="submit" className="text-blue-500 font-bold text-sm flex-shrink-0 active:opacity-60">Send</button>
+                        <button type="submit" className="text-blue-500 font-bold text-sm flex-shrink-0 active:opacity-60 pb-0.5">Send</button>
                     ) : (
                         <button
                             type="button"
@@ -868,7 +868,7 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, isTyping
                                 setShowStickers(!showStickers);
                                 setShowKeyboard(false);
                             }}
-                            className="flex-shrink-0 active:opacity-50"
+                            className="flex-shrink-0 active:opacity-50 pb-0.5"
                             style={{ color: 'rgba(0, 0, 0, 0.5)' }}
                         >
                             <Smile size={22} strokeWidth={1.5} />
