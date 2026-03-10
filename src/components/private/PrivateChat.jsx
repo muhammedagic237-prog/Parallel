@@ -204,7 +204,7 @@ const ChatListView = memo(({ onLock, onSelectChat, peers, status, currentUser, o
         className="flex flex-col h-full"
     >
         {/* Header — Frosted Glass */}
-        <header className="glass-header px-4 py-3 flex justify-between items-center sticky top-0 z-10" style={{ background: 'rgba(255, 255, 255, 0.45)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', borderBottom: '1px solid rgba(255, 255, 255, 0.5)', paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
+        <header className="glass-header px-4 py-3 flex justify-between items-center sticky top-0 z-10" style={{ background: 'rgba(255, 255, 255, 0.45)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', borderBottom: '1px solid rgba(255, 255, 255, 0.5)' }}>
             <div className="flex items-center gap-3">
                 <button onClick={onLock} style={{ color: 'rgba(0, 0, 0, 0.7)' }}>
                     <ArrowLeft size={24} strokeWidth={2} />
@@ -553,7 +553,7 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, isTyping
             style={{ background: 'inherit' }}
         >
             {/* Header — Frosted Glass */}
-            <header className="glass-header px-3 py-2 flex items-center justify-between" style={{ background: 'rgba(255, 255, 255, 0.45)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', borderBottom: '1px solid rgba(255, 255, 255, 0.5)', paddingTop: 'max(8px, env(safe-area-inset-top))' }}>
+            <header className="glass-header px-3 py-2 flex items-center justify-between" style={{ background: 'rgba(255, 255, 255, 0.45)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', borderBottom: '1px solid rgba(255, 255, 255, 0.5)' }}>
                 <div className="flex items-center gap-3">
                     <button onClick={() => { setShowKeyboard(false); setShowStickers(false); onBack(); }} className="active:opacity-50 transition-opacity" style={{ color: 'rgba(0, 0, 0, 0.7)' }}><ArrowLeft size={26} strokeWidth={1.5} /></button>
                     <div className="flex items-center gap-3">
@@ -843,7 +843,7 @@ const ConversationView = memo(({ chat, onBack, messages, onSendMessage, isTyping
 
             {/* Footer / Input Bar — Frosted Glass */}
             <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleFileChange} />
-            <form onSubmit={handleSend} className="px-3 py-2 flex items-center gap-2" style={{ background: 'rgba(255, 255, 255, 0.45)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', borderTop: '1px solid rgba(255, 255, 255, 0.5)', paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+            <form onSubmit={handleSend} className="px-3 py-2 flex items-center gap-2" style={{ background: 'rgba(255, 255, 255, 0.45)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', borderTop: '1px solid rgba(255, 255, 255, 0.5)' }}>
                 <button type="button" onClick={handleImagePick} className="h-11 w-11 flex items-center justify-center rounded-full text-white flex-shrink-0 active:scale-90 transition-transform relative" style={{ background: 'linear-gradient(135deg, #3b82f6, #6366f1)', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)' }}>
                     <ImageIcon size={22} />
 
