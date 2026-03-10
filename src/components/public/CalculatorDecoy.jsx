@@ -225,7 +225,7 @@ const CalculatorDecoy = ({ onLock }) => {
             </div>
 
             {/* Keypad */}
-            <div className="w-full px-4 pb-8 space-y-3">
+            <div className="w-full px-4 space-y-3" style={{ paddingBottom: 'max(32px, env(safe-area-inset-bottom))' }}>
                 {/* Row 1 */}
                 <div className="flex gap-3 justify-between">
                     <button onClick={clearAll} className="w-[22%] aspect-square rounded-full bg-[#a5a5a5] active:bg-[#d4d4d2] active:scale-[0.92] text-black text-2xl font-medium transition-all duration-100">
