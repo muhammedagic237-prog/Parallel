@@ -230,7 +230,6 @@ const IncognitoKeyboard = memo(({ onKeyPress, onBackspace, onEnter, visible }) =
                 backdropFilter: 'blur(30px) saturate(180%)',
                 WebkitBackdropFilter: 'blur(30px) saturate(180%)',
                 borderTop: '1px solid rgba(255, 255, 255, 0.4)',
-                paddingBottom: 'env(safe-area-inset-bottom, 8px)',
             }}
         >
             {/* Key Preview Popup — ref-based, never re-renders */}
@@ -276,7 +275,7 @@ const IncognitoKeyboard = memo(({ onKeyPress, onBackspace, onEnter, visible }) =
             </div>
 
             {/* Keyboard Rows */}
-            <div className="px-2 pt-2 pb-4 space-y-[8px]">
+            <div className="px-2 pt-2 pb-1 space-y-[8px]">
                 {currentLayout.map((row, ri) => (
                     <div key={ri} className="flex gap-[6px] justify-center px-0.5">
                         {row.map(key => {
